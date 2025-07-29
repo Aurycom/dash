@@ -34,7 +34,7 @@ add_definitions(-DBOOST_ALL_DYN_LINK)
 
 find_package(Boost REQUIRED COMPONENTS system log OPTIONAL_COMPONENTS unit_test_framework)
 find_package(libusb-1.0 REQUIRED)
-find_package(Qt5 COMPONENTS Multimedia MultimediaWidgets Bluetooth Qml Quick QuickWidgets SerialBus SerialPort WebSockets DBus Xml Svg REQUIRED)
+find_package(Qt5 COMPONENTS Multimedia MultimediaWidgets Bluetooth Qml Quick QuickWidgets SerialBus SerialPort WebSockets DBus Xml Svg Concurrent REQUIRED)
 find_package(KF5BluezQt REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -42,6 +42,9 @@ find_package(rtaudio REQUIRED)
 find_package(taglib REQUIRED)
 find_package(aasdk REQUIRED)
 find_package(openauto REQUIRED)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GPIOD REQUIRED libgpiodcxx)
 
 if(RPI_BUILD AND NOT GST_BUILD)
     add_definitions(-DUSE_OMX -DOMX_SKIP64BIT)
@@ -76,7 +79,8 @@ if(GST_BUILD)
 endif(GST_BUILD)
 message(INFO "${GST_LIBRARIES}")
 
-link_directories(${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+link_directories(${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+    ${GPIOD_LIBRARY_DIRS})
 
 file(GLOB_RECURSE source_files ${sources_directory}/*.cpp ${include_directory}/*.hpp ${resources_directory}/*.qrc)
 
@@ -88,6 +92,7 @@ include(${base_directory}/cmake_modules/gitversion.cmake)
 
 target_include_directories(dash PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}
+    ${GPIOD_INCLUDE_DIRS}
     )
 
 target_include_directories(dash SYSTEM PRIVATE
@@ -101,6 +106,7 @@ target_include_directories(dash SYSTEM PRIVATE
     ${Qt5MultimediaWidgets_INCLUDE_DIRS}
     ${Qt5Widgets_INCLUDE_DIRS}
     ${Qt5Bluetooth_INCLUDE_DIRS}
+    ${Qt5Concurrent_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
     ${LIBUSB_1_INCLUDE_DIRS}
     ${PROTOBUF_INCLUDE_DIR}
@@ -131,6 +137,7 @@ target_link_libraries(dash
     ${Qt5Multimedia_LIBRARIES}
     ${Qt5MultimediaWidgets_LIBRARIES}
     ${Qt5Bluetooth_LIBRARIES}
+    ${QT5Concurrent_LIBRARIES}
     KF5::BluezQt
     ${LIBUSB_1_LIBRARIES}
     ${PROTOBUF_LIBRARIES}
@@ -149,6 +156,7 @@ target_link_libraries(dash
     ${QTGSTREAMER_QUICK_LIBRARIES}
     ${QTGSTREAMER_QUICK_LIBRARY}
     ${TAGLIB_LIBRARIES}
+    ${GPIOD_LIBRARIES}
     )
 
 install(TARGETS dash DESTINATION bin)

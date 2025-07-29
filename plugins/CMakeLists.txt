@@ -26,6 +26,7 @@ FOREACH(plugin_type ${plugin_types})
             ${Qt5Widgets_INCLUDE_DIRS}
             ${Qt5Bluetooth_INCLUDE_DIRS}
             ${Qt5DBus_INCLUDE_DIRS}
+	    ${Qt5Concurrent_INCLUDE_DIRS}
             ${Boost_INCLUDE_DIRS}
             ${LIBUSB_1_INCLUDE_DIRS}
             ${PROTOBUF_INCLUDE_DIR}
@@ -40,6 +41,7 @@ FOREACH(plugin_type ${plugin_types})
             ${QTGSTREAMER_INCLUDE_DIR}
             ${TAGLIB_INCLUDE_DIRS}
             ${X11_INCLUDE_DIR}
+            ${GPIOD_INCLUDE_DIRS}
             ${include_directory}
         )
         target_link_libraries(${plugin}
@@ -54,6 +56,7 @@ FOREACH(plugin_type ${plugin_types})
             ${Qt5Multimedia_LIBRARIES}
             ${Qt5MultimediaWidgets_LIBRARIES}
             ${Qt5Bluetooth_LIBRARIES}
+            ${Qt5Concurrent_LIBRARIES}
             KF5::BluezQt
             ${LIBUSB_1_LIBRARIES}
             ${PROTOBUF_LIBRARIES}
@@ -73,6 +76,7 @@ FOREACH(plugin_type ${plugin_types})
             ${QTGSTREAMER_QUICK_LIBRARY}
             ${TAGLIB_LIBRARIES}
             ${X11_LIBRARIES}
+            ${GPIOD_LIBRARIES}
         )
     ENDFOREACH()
 ENDFOREACH()
