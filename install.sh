@@ -186,6 +186,7 @@ dependencies=(
 "libtool"
 "autoconf"
 "ffmpeg"
+"libgpiod-dev"
 )
 
 
