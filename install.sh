@@ -668,6 +668,12 @@ else
       echo Dash make failed with error code $?
       exit 1
   fi
+
+  if [ -f openauto.bak ]; then
+    cp openauto.bak ~/openauto.ini
+    echo "Default config file created"
+  fi
+
   cd $script_path
 
   #Raspberry Pi addons 
