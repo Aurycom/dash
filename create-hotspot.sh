@@ -23,17 +23,24 @@ CHANNEL=36
 # Vérifie si la connexion existe
 if nmcli connection show "$CONN_NAME" &> /dev/null; then
     echo "Connexion '$CONN_NAME' existe, suppression..."
-    nmcli connection delete "$CONN_NAME"
+    sudo nmcli connection delete "$CONN_NAME"
 fi
 
 echo "Création de la connexion hotspot 5GHz '$CONN_NAME'..."
 
-nmcli connection add type wifi ifname "$WIFI_IFACE" con-name "$CONN_NAME" autoconnect no ssid "$SSID"
-nmcli connection modify "$CONN_NAME" 802-11-wireless.mode ap 802-11-wireless.band a 802-11-wireless.channel $CHANNEL
-nmcli connection modify "$CONN_NAME" wifi-sec.key-mgmt wpa-psk
-nmcli connection modify "$CONN_NAME" wifi-sec.psk "$PASSWORD"
-nmcli connection modify "$CONN_NAME" 802-11-wireless-security.pmf disable
-nmcli connection modify "$CONN_NAME" ipv4.method shared ipv6.method ignore
-nmcli connection modify "$CONN_NAME" connection.autoconnect yes
-nmcli connection up "$CONN_NAME"
+sudo nmcli connection add type wifi ifname "$WIFI_IFACE" con-name "$CONN_NAME" autoconnect no ssid "$SSID"
+sudo nmcli connection modify "$CONN_NAME" 802-11-wireless.mode ap 802-11-wireless.band a 802-11-wireless.channel $CHANNEL
+sudo nmcli connection modify "$CONN_NAME" wifi-sec.key-mgmt wpa-psk
+sudo nmcli connection modify "$CONN_NAME" wifi-sec.psk "$PASSWORD"
+sudo nmcli connection modify "$CONN_NAME" 802-11-wireless-security.pmf disable
+sudo nmcli connection modify "$CONN_NAME" ipv4.method shared ipv6.method ignore
+sudo nmcli connection modify "$CONN_NAME" connection.autoconnect yes
+sudo nmcli connection up "$CONN_NAME"
 echo "Connexion hotspot '$CONN_NAME' créée avec succès."
+if [ -f ~/openauto.ini ]; then
+    sed -E -i "s/SSID=.*/SSID=$SSID/g" ~/openauto.ini
+    sed -E -i "s/Password=.*/Password=$PASSWORD/g" ~/openauto.ini
+    echo "Modification du fichier openauto.ini effectuée"
+else
+    echo "Le fichier openauto.ini n'existe pas"
+fi
