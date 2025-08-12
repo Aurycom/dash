@@ -1,27 +1,27 @@
-QMainWindow,
-QMainWindow > QFrame {
+QMainWindow#DarkMode,
+QMainWindow#DarkMode > QFrame {
     background-color: rgb(18, 18, 18);
 }
 
-QWidget {
+#DarkMode QWidget {
     outline: 0;
 }
 
-QLabel {
+#DarkMode QLabel {
     color: rgb(255, 255, 255);
 }
 
-QLabel:disabled {
+#DarkMode QLabel:disabled {
     color: rgba(255, 255, 255, 128);
 }
 
-QTabWidget::pane {
+#DarkMode QTabWidget::pane {
     background-color: transparent;
     border: none;
     border-top: 2px solid rgb(66, 66, 66);
 }
 
-QTabBar::tab {
+#DarkMode QTabBar::tab {
     background-color: transparent;
     color: rgba(255, 255, 255, 179);
     margin-top: 2px;
@@ -29,33 +29,33 @@ QTabBar::tab {
     border-bottom: 2px solid transparent;
 }
 
-QTabBar::tab:selected:top {
+#DarkMode QTabBar::tab:selected:top {
     color: palette(base);
     border-bottom: 2px solid palette(base);
 }
 
-QTabBar::tab:disabled {
+#DarkMode QTabBar::tab:disabled {
     height: 0px;
     width: 0px;
     padding: 0px;
     margin: 0px;
 }
 
-QSlider {
+#DarkMode QSlider {
     height: 30px;
 }
 
-QSlider::groove {
+#DarkMode QSlider::groove {
     background-color: palette(alternate-base);
     height: 5px;
     border-radius: 2px;
 }
 
-QSlider::groove[neutral="true"] {
+#DarkMode QSlider::groove[neutral="true"] {
     background-color: rgba(224, 224, 224, 128);
 }
 
-QSlider::handle {
+#DarkMode QSlider::handle {
     background-color: palette(base);
     width: 25px;
     height: 5px;
@@ -65,168 +65,168 @@ QSlider::handle {
     border-radius: 12px;
 }
 
-QSlider::handle[neutral="true"] {
+#DarkMode QSlider::handle[neutral="true"] {
     background-color: rgb(224, 224, 224);
 }
 
-QSlider::sub-page {
+#DarkMode QSlider::sub-page {
     background-color: palette(base);
     height: 5px;
     border-radius: 2px;
 }
 
-QSlider::sub-page[neutral="true"] {
+#DarkMode QSlider::sub-page[neutral="true"] {
     background-color: rgb(224, 224, 224);
 }
 
-QPushButton {
+#DarkMode QPushButton {
     color: rgb(255, 255, 255);
     border: none;
     padding: 8px;
     border-radius: 8px;
 }
 
-QPushButton:pressed {
+#DarkMode QPushButton:pressed {
     background-color: rgba(255, 255, 255, 25);
 }
 
-QPushButton:disabled {
+#DarkMode QPushButton:disabled {
     color: rgba(255, 255, 255, 128);
 }
 
-QPushButton:!flat {
+#DarkMode QPushButton:!flat {
     background-color: rgb(50, 50, 50);
 }
 
-QPushButton:!flat:checked {
+#DarkMode QPushButton:!flat:checked {
     color: rgb(0, 0, 0);
     background-color: palette(base);
 }
 
-QPushButton:!flat:disabled {
+#DarkMode QPushButton:!flat:disabled {
     background-color: rgb(33, 33, 33);
 }
 
-QPushButton#FullscreenBar {
+#DarkMode QPushButton#FullscreenBar {
     border-radius: 2px;
     margin: 2px;
 }
 
-QFrame[frameShape="4"][frameShadow="16"],
-QFrame[frameShape="5"][frameShadow="16"] {
+#DarkMode QFrame[frameShape="4"][frameShadow="16"],
+#DarkMode QFrame[frameShape="5"][frameShadow="16"] {
     color: rgba(255, 255, 255, 66);
 }
 
-QListWidget {
+#DarkMode QListWidget {
     background-color: rgb(46, 46, 46); 
     color: rgb(255, 255, 255);
     border: 2px solid rgb(66, 66, 66);
 }
 
-QListView {
+#DarkMode QListView {
     padding: 2px;
     border-radius: 8px;
 }
 
-QListView::indicator {
+#DarkMode QListView::indicator {
     border: none;
 }
 
-QListView::item:selected {
+#DarkMode QListView::item:selected {
     color: rgb(0, 0, 0);
     background-color: palette(base);
     border-radius: 8px;
 }
 
-QListView::item:disabled {
+#DarkMode QListView::item:disabled {
     color: rgba(255, 255, 255, 128);
 }
 
-QGroupBox {
+#DarkMode QGroupBox {
     border: none;
 }
 
-QCheckBox {
+#DarkMode QCheckBox {
     color: rgb(255, 255, 255);
     background-color: transparent;
 }
 
-QRadioButton {
+#DarkMode QRadioButton {
     color: rgb(255, 255, 255);
     background-color: transparent;
 }
 
-QRadioButton:disabled {
+#DarkMode QRadioButton:disabled {
     color: rgb(136, 136, 136);
 }
 
-QCheckBox::indicator {
+#DarkMode QCheckBox::indicator {
     width: 22px;
     height: 22px;
     border: 2px solid rgb(255, 255, 255);
     border-radius: 3px;
 }
 
-QRadioButton::indicator {
+#DarkMode QRadioButton::indicator {
     width: 19px;
     height: 19px;
     border: 2px solid rgb(255, 255, 255);
     border-radius: 11px;
 }
 
-QRadioButton::indicator:disabled {
+#DarkMode QRadioButton::indicator:disabled {
     border: 2px solid rgb(136, 136, 136);
 }
 
-QCheckBox::indicator::checked {
+#DarkMode QCheckBox::indicator::checked {
     image: url(:/icons/dark/check.svg);
     background-color: palette(base);
     border: 2px solid palette(base);
 }
 
-QRadioButton::indicator::checked {
+#DarkMode QRadioButton::indicator::checked {
     background-color: qradialgradient(cx:0.5, cy:0.5, fx:0.5, fy:0.5, radius:.4, stop:.65 palette(base), stop:.75 transparent);
     border: 2px solid palette(base);
 }
 
-QRadioButton::indicator::checked:disabled {
+#DarkMode QRadioButton::indicator::checked:disabled {
     background-color: qradialgradient(cx:0.5, cy:0.5, fx:0.5, fy:0.5, radius:.4, stop:.65 rgb(136, 136, 136), stop:.75 transparent);
     border: 2px solid rgb(136, 136, 136);
 }
 
-QScrollArea {
+#DarkMode QScrollArea {
     background-color: transparent;
     border: none;
 }
 
-QScrollArea > QWidget > QWidget {
+#DarkMode QScrollArea > QWidget > QWidget {
     background-color: transparent;
 }
 
-QScrollBar {
+#DarkMode QScrollBar {
     background-color: transparent;
 }
 
-QScrollBar:vertical {
+#DarkMode QScrollBar:vertical {
     padding-top: 6px;
     padding-bottom: 6px;
     width: 16px;
 }
 
-QScrollBar::handle {
+#DarkMode QScrollBar::handle {
     background-color: rgba(255, 255, 255, 31);
     border-radius: 8px;
 }
 
-QScrollBar::add-line {
+#DarkMode QScrollBar::add-line {
     border: none;
 }
 
-QScrollBar::sub-line {
+#DarkMode QScrollBar::sub-line {
     border: none;
 }
 
-QLineEdit {
+#DarkMode QLineEdit {
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
     border-bottom-left-radius: 1px;
@@ -238,45 +238,45 @@ QLineEdit {
     border-bottom: 1px solid rgb(66, 66, 66);
 }
 
-QLineEdit:focus {
+#DarkMode QLineEdit:focus {
     background-color: rgb(29, 29, 29);
     border-bottom: 2px solid palette(base);
 }
 
-Switch {
+#DarkMode Switch {
     qproperty-track_color: rgba(255, 255, 255, 31);
     qproperty-thumb_color: rgb(158, 158, 158);
 }
 
-Tuner {
+#DarkMode Tuner {
     qproperty-color: rgb(224, 224, 224);
     qproperty-accent: palette(base);
 }
 
-Tuner::groove {
+#DarkMode Tuner::groove {
     background-color: none;
 }
 
-Tuner::handle {
+#DarkMode Tuner::handle {
     background-color: none;
     width: 0px;
     height: 0px;
 }
 
-Tuner::sub-page {
+#DarkMode Tuner::sub-page {
     background-color: none;
 }
 
-StepMeter {
+#DarkMode StepMeter {
     qproperty-base_color: palette(alternate-base);
     qproperty-bar_color: palette(base);
 }
 
-ClimateState {
+#DarkMode ClimateState {
     qproperty-color: rgb(228, 228, 228);
 }
 
-VehicleState {
+#DarkMode VehicleState {
     qproperty-base_color: rgb(228, 228, 228);
     qproperty-headlight_color: #4FC3F7;
     qproperty-taillight_color: #E57373;
@@ -284,20 +284,20 @@ VehicleState {
     qproperty-warning_color: #FF7043;
 }
 
-QDialog,
-QDialog > QFrame {
+#DarkMode QDialog,
+#DarkMode QDialog > QFrame {
     background-color: rgb(56, 56, 56);
     border-radius: 8px;
     border: 2px solid rgb(66, 66, 66);
 }
 
-#ControlBar {
+#DarkMode #ControlBar {
     background-color: rgb(48, 48, 48);
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
 }
 
-#StatusBar {
+#DarkMode #StatusBar {
     background-color: rgba(255, 255, 255, 4);
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
@@ -306,7 +306,7 @@ QDialog > QFrame {
     margin: 2px;
 }
 
-*[add_hint="true"] {
+#DarkMode *[add_hint="true"] {
     background-color: rgba(255, 255, 255, 31);
     border-radius: 8px;
 }

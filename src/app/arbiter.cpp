@@ -8,14 +8,23 @@ Arbiter::Arbiter(MainWindow *window)
     , window_(window)
     , session_(*this)
 {
+    // In order to get the good theme at startup as we load both theme
+    QString theme = Session::Theme::to_str(this->theme().mode);
+    // Only apply the theme from settings
+    this->window()->setObjectName(theme+"Mode");
 }
 
 void Arbiter::set_mode(Session::Theme::Mode mode)
 {
     this->theme().mode = mode;
     this->settings().setValue("Theme/mode", mode);
+    QString theme = Session::Theme::to_str(mode);
+    this->window()->setObjectName(theme+"Mode");
 
-    this->session_.update();
+    // Do not reload all the stylesheet theyare already both loaded
+    //this->session_.update();
+    // Just refresh the app thanks to the QMainWindow objectName
+    this->session_.refreshQss();
 
     emit mode_changed(mode);
     emit color_changed(this->theme().color());

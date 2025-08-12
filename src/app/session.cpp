@@ -503,6 +503,15 @@ void Session::update()
 {
     if (qApp) {
         qApp->setPalette(this->theme_.palette());
-        qApp->setStyleSheet(this->core_.stylesheet(this->theme_.mode, this->layout_.scale));
+        QString lightQss = this->core_.stylesheet(Session::Theme::Light , this->layout_.scale);
+        QString darkQss = this->core_.stylesheet(Session::Theme::Dark , this->layout_.scale);
+        QString combinedQss = lightQss+" "+darkQss;
+        qApp->setStyleSheet(combinedQss);
     }
+}
+
+void Session::refreshQss(){
+     qApp->setPalette(this->theme_.palette());
+     qApp->style()->unpolish(qApp);
+     qApp->style()->polish(qApp);
 }

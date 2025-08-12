@@ -197,6 +197,7 @@ class Session {
 
     Session(Arbiter &arbiter);
     void update();
+    void refreshQss();
 
     friend class Arbiter;
 
