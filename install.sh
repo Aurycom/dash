@@ -669,7 +669,7 @@ else
       exit 1
   fi
 
-  if [ -f openauto.bak ]; then
+  if [[ -f openauto.bak && ! -f ~/openauto.ini ]]; then
     cp openauto.bak ~/openauto.ini
     echo "Default config file created"
   fi
