@@ -89,6 +89,8 @@ QWidget *MainSettingsTab::dark_mode_row_widget()
     toggle->setChecked(this->arbiter.theme().mode == Session::Theme::Dark);
     connect(&this->arbiter, &Arbiter::mode_changed, [toggle, this](Session::Theme::Mode mode){
         toggle->setChecked(mode == Session::Theme::Dark);
+        toggle->style()->unpolish(toggle);
+        toggle->style()->polish(toggle);
     });
     connect(toggle, &Switch::stateChanged, [this](bool state){
         this->arbiter.set_mode(state ? Session::Theme::Dark : Session::Theme::Light);
