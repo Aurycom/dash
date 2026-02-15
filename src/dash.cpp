@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
 
     window.show();
     splash.finish(&window);
+    window.activateWindow();
 
     return dash.exec();
 }

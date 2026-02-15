@@ -310,3 +310,18 @@ QMainWindow#DarkMode > QFrame {
     background-color: rgba(255, 255, 255, 31);
     border-radius: 8px;
 }
+
+#DarkMode *[focusByTab="true"]:focus{
+    outline: 2px solid palette(base);
+    margin:-8px;
+}
+#DarkMode QSlider::handle:focus {
+    border:2px solid rgba(255, 255, 255);
+    margin-top: -10px;
+    margin-left:0px;
+    margin-right:0px;
+    margin-bottom: -10px;
+    outline: none;
+    width: 21px;
+    height: 5px;
+}

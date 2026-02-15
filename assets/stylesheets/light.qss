@@ -3,10 +3,6 @@ QMainWindow > QFrame {
     background-color: rgb(238, 238, 238);
 }
 
-QWidget {
-    outline: 0;
-}
-
 QLabel {
     color: rgba(0, 0, 0, 222);
 }
@@ -154,6 +150,7 @@ QCheckBox {
 QRadioButton {
     color: rgba(0, 0, 0, 222);
     background-color: transparent;
+
 }
 
 QRadioButton:disabled {
@@ -309,4 +306,23 @@ QDialog > QFrame {
 *[add_hint="true"] {
     background-color: rgba(0, 0, 0, 12);
     border-radius: 8px;
+}
+/*:focus{
+    outline: 2px solid red;
+}*/
+*[focusByTab="true"]:focus{
+    outline: 2px solid palette(base);
+    margin:-8px;
+}
+QSlider::handle:focus {
+    border:2px solid palette(base);
+    background-color: palette(alternate-base);
+    margin:0px;
+    margin-top: -10px;
+    margin-left:0px;
+    margin-right:0px;
+    margin-bottom: -10px;
+    outline: none;
+    width: 25px;
+    height: 5px;
 }

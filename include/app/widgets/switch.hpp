@@ -1,6 +1,9 @@
 #pragma once
 
 #include <QtWidgets>
+#include <QAbstractButton>
+#include <QPainter>
+#include <QStyleOptionButton>
 
 class Switch : public QAbstractButton {
     Q_OBJECT

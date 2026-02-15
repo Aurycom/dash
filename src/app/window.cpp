@@ -5,6 +5,7 @@
 #include "app/quick_views/quick_view.hpp"
 #include "app/utilities/icon_engine.hpp"
 #include "app/widgets/dialog.hpp"
+#include "app/FocusEventFilter.hpp"
 
 #include "app/window.hpp"
 
@@ -46,6 +47,10 @@ Dash::Dash(Arbiter &arbiter)
     , rail()
     , body()
 {
+
+    FocusEventFilter *filter = new FocusEventFilter(this);
+    qApp->installEventFilter(filter);
+
     auto layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);

@@ -1,10 +1,13 @@
 #include <QtWidgets>
+#include <QStyleOption>
 
 #include "app/widgets/switch.hpp"
 
 Switch::Switch(QWidget* parent) : QAbstractButton(parent)
 {
     QAbstractButton::setCheckable(true);
+
+    this->setFocusPolicy(Qt::StrongFocus);
 
     this->track_radius = BASE_TRACK_RADIUS;
     this->thumb_radius = BASE_THUMB_RADIUS;
@@ -27,6 +30,7 @@ QSize Switch::sizeHint() const
 
 void Switch::paintEvent(QPaintEvent*)
 {
+    
     QPainter painter(this);
 
     painter.setRenderHint(QPainter::Antialiasing);
@@ -34,6 +38,26 @@ void Switch::paintEvent(QPaintEvent*)
 
     QColor track_brush = this->isChecked() ? palette().color(QPalette::AlternateBase) : this->track_color;
     QColor thumb_brush = this->isChecked() ? palette().color(QPalette::Base) : this->thumb_color;
+
+    if(hasFocus()){
+        int outlineWidth = 2;
+        //QRect rect = this->rect();
+        //QRect outlineRect = rect;
+        //QRect outlineRect = rect.adjusted(outlineWidth, outlineWidth, -outlineWidth, -outlineWidth);
+        QWidget *widget = new QWidget();
+        QSize hintSize = widget->sizeHint(); // Get the recommended size
+        QRect rect(0, 0, hintSize.width(), hintSize.height()); // Create QRect using sizeHint dimensions
+        QPen pen(palette().color(QPalette::Base), outlineWidth);
+        painter.setPen(pen);
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRoundedRect(rect, 10, 10);
+
+        /*if(this->isChecked())
+            painter.setBrush(palette().color(QPalette::AlternateBase));
+        else
+            painter.setBrush(this->track_color);
+        painter.drawRoundedRect(contentRect, 10, 10);*/
+    }
 
     painter.setBrush(track_brush);
     painter.drawRoundedRect(this->margin, this->margin, this->width() - 2 * this->margin,
