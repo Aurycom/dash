@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <functional>
 
-#include <QDir>
 #include <QHBoxLayout>
 #include <QKeySequence>
 #include <QPushButton>
@@ -15,26 +14,102 @@
 
 #include "DashLog.hpp"
 
-const QRegExp GPIONotifier::GPIOX_REGEX("gpio\\d+");
-const QString GPIONotifier::GPIO_DIR("/sys/class/gpio");
-const QString GPIONotifier::GPIOX_DIR(GPIONotifier::GPIO_DIR + "/%1");
-const QString GPIONotifier::GPIOX_VALUE_PATH(GPIONotifier::GPIOX_DIR + "/value");
-const QString GPIONotifier::GPIOX_ACTIVE_LOW_PATH(GPIONotifier::GPIOX_DIR + "/active_low");
+namespace {
+
+const char *GPIO_CONSUMER = "dash";
+
+// Buttons are assumed to be wired to ground with the internal pull-up
+// enabled, so a press shows up as a falling edge.
+const gpiod::line_request GPIO_BUTTON_REQUEST{
+    GPIO_CONSUMER,
+    gpiod::line_request::EVENT_FALLING_EDGE,
+    gpiod::line_request::FLAG_BIAS_PULL_UP
+};
+
+// "gpioN" keys are matched against the RPi devicetree line names ("GPIOx")
+// first so this keeps working across chips (e.g. the Pi 5's RP1), falling
+// back to offset N on gpiochip0 for boards without named lines.
+bool find_gpio_line(int number, gpiod::line &out)
+{
+    for (auto &chip : gpiod::make_chip_iter()) {
+        for (auto &line : gpiod::line_iter(chip)) {
+            if (QString::fromStdString(line.name()).compare(QString("GPIO%1").arg(number), Qt::CaseInsensitive) == 0) {
+                out = line;
+                return true;
+            }
+        }
+    }
+
+    try {
+        gpiod::chip chip("gpiochip0");
+        out = chip.get_line(number);
+        return true;
+    } catch (const std::exception &) {
+        return false;
+    }
+}
+
+QString gpio_key_for_line(const gpiod::line &line)
+{
+    QString name = QString::fromStdString(line.name());
+    if (name.startsWith("GPIO", Qt::CaseInsensitive)) {
+        bool ok = false;
+        int number = name.mid(4).toInt(&ok);
+        if (ok)
+            return QString("gpio%1").arg(number);
+    }
+    return QString("gpio%1").arg(line.offset());
+}
+
+} // namespace
 
 GPIONotifier::GPIONotifier()
     : QObject()
-    , watcher()
 {
-    for (auto gpio : QDir(this->GPIO_DIR).entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-        if (this->GPIOX_REGEX.exactMatch(gpio) && QFile(this->GPIOX_ACTIVE_LOW_PATH.arg(gpio)).exists())
-            this->watcher.addPath(this->GPIOX_VALUE_PATH.arg(gpio));
-    }
+}
 
+GPIONotifier::~GPIONotifier()
+{
     this->disable();
+}
 
-    connect(&this->watcher, &QFileSystemWatcher::fileChanged, [this](QString path){
-        emit triggered(QFileInfo(path).dir().dirName());
-    });
+void GPIONotifier::enable()
+{
+    if (!this->watches.isEmpty())
+        return;
+
+    for (auto &chip : gpiod::make_chip_iter()) {
+        for (auto &line : gpiod::line_iter(chip)) {
+            QString name = QString::fromStdString(line.name());
+            if (!name.startsWith("GPIO", Qt::CaseInsensitive) || line.is_used())
+                continue;
+
+            try {
+                line.request(GPIO_BUTTON_REQUEST);
+            } catch (const std::exception &) {
+                continue;
+            }
+
+            auto *notifier = new QSocketNotifier(line.event_get_fd(), QSocketNotifier::Read, this);
+            QString key = gpio_key_for_line(line);
+            connect(notifier, &QSocketNotifier::activated, this, [this, line, key](int) mutable {
+                line.event_read();
+                emit triggered(key);
+            });
+
+            this->watches.push_back({line, notifier});
+        }
+    }
+}
+
+void GPIONotifier::disable()
+{
+    for (auto &watch : this->watches) {
+        delete watch.notifier;
+        if (watch.line.is_requested())
+            watch.line.release();
+    }
+    this->watches.clear();
 }
 
 ActionDialog::ActionDialog(Arbiter &arbiter)
@@ -81,16 +156,18 @@ void ActionDialog::closeEvent(QCloseEvent *event)
 }
 
 Action::GPIO::GPIO()
-    : watcher()
-    , value()
-    , active_low(0xFF)
+    : line()
+    , notifier(nullptr)
+    , requested(false)
 {
 }
 
 Action::GPIO::~GPIO()
 {
-    if (value.isOpen())
-        value.close();
+    if (notifier)
+        delete notifier;
+    if (requested)
+        line.release();
 }
 
 Action::Action(QString name, std::function<void(ActionState)> action, QWidget *parent)
@@ -101,28 +178,6 @@ Action::Action(QString name, std::function<void(ActionState)> action, QWidget *p
     , key_()
     , func_(action)
 {
-    connect(&this->gpio.watcher, &QFileSystemWatcher::fileChanged, [this, action](QString){
-        if (this->gpio.value.isOpen()) {
-            this->gpio.value.seek(0);
-            if (this->gpio.active_low == this->gpio.value.read(1).at(0)) {
-                this->gpio.watcher.blockSignals(true);
-                action(ActionState::Triggered);
-                QTimer::singleShot(300, [this]{ this->gpio.watcher.blockSignals(false); });
-            }
-            else {
-                QString debugStr;
-                QDebug stream(&debugStr);
-                stream << this->key_ << ": active low != value";
-                DASH_LOG(info) << "[Action] " << debugStr.toStdString(); // temp
-            }
-        }
-        else {
-            QString debugStr;
-            QDebug stream(&debugStr);
-            stream << this->key_ << ":" << this->gpio.value.fileName() << "is not open"; // temp
-            DASH_LOG(info) << "[Action] " << debugStr.toStdString();
-        }
-    });
     connect(&this->shortcut, &QShortcut::activated, [action]{ action(ActionState::Triggered); });
 }
 
@@ -173,11 +228,14 @@ void Action::set(QString key)
     if(k > -1)
         actionEventFilter->eventFilterMap.remove(k);
 
-    auto gpios = this->gpio.watcher.files();
-    if (!gpios.isEmpty())
-        this->gpio.watcher.removePaths(gpios);
-    if (this->gpio.value.isOpen())
-        this->gpio.value.close();
+    if (this->gpio.notifier) {
+        delete this->gpio.notifier;
+        this->gpio.notifier = nullptr;
+    }
+    if (this->gpio.requested) {
+        this->gpio.line.release();
+        this->gpio.requested = false;
+    }
 
     this->key_ = key;
     if (this->key_.startsWith("gpio")) {
@@ -185,25 +243,38 @@ void Action::set(QString key)
         QDebug stream(&debugStr);
         stream << "[Action] " << this->key_ << ": setting action as gpio"; // temp
         DASH_LOG(info) << debugStr.toStdString();
-        this->gpio.value.setFileName(GPIONotifier::GPIOX_VALUE_PATH.arg(this->key_));
-        if (this->gpio.value.open(QIODevice::ReadOnly)) {
-            QFile active_low(GPIONotifier::GPIOX_ACTIVE_LOW_PATH.arg(this->key_), this);
-            if (active_low.open(QIODevice::ReadOnly)) {
-                this->gpio.active_low = active_low.read(1)[0];
-                active_low.close();
-                this->gpio.watcher.addPath(this->gpio.value.fileName());
-            }
-            else {
+
+        bool ok = false;
+        int number = this->key_.mid(4).toInt(&ok);
+
+        gpiod::line line;
+        if (ok && find_gpio_line(number, line)) {
+            try {
+                line.request(GPIO_BUTTON_REQUEST);
+                this->gpio.line = line;
+                this->gpio.requested = true;
+
+                this->gpio.notifier = new QSocketNotifier(line.event_get_fd(), QSocketNotifier::Read, this);
+                connect(this->gpio.notifier, &QSocketNotifier::activated, this, [this](int){
+                    this->gpio.line.event_read();
+                    this->gpio.notifier->setEnabled(false);
+                    this->func_(ActionState::Triggered);
+                    QTimer::singleShot(300, this, [this]{
+                        if (this->gpio.notifier)
+                            this->gpio.notifier->setEnabled(true);
+                    });
+                });
+            } catch (const std::exception &e) {
                 QString debugStr;
                 QDebug stream(&debugStr);
-                stream << "[Action] " << this->key_ << ": failed to open" << active_low; // temp
+                stream << "[Action]" << this->key_ << ": failed to request gpio line -" << e.what(); // temp
                 DASH_LOG(info) << debugStr.toStdString();
             }
         }
         else {
             QString debugStr;
             QDebug stream(&debugStr);
-            stream << "[Action]" << this->key_ << ": failed to open" << this->gpio.value.fileName(); // temp
+            stream << "[Action]" << this->key_ << ": gpio line not found"; // temp
             DASH_LOG(info) << debugStr.toStdString();
         }
     }

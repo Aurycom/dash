@@ -1,18 +1,18 @@
 #pragma once
 
 #include <QCloseEvent>
-#include <QFile>
-#include <QFileSystemWatcher>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QList>
 #include <QObject>
-#include <QRegExp>
 #include <QShortcut>
+#include <QSocketNotifier>
 #include <QString>
 #include <QShowEvent>
 #include <QWidget>
 #include <bits/stdc++.h>
 
+#include <gpiod.hpp>
 
 #include "app/widgets/dialog.hpp"
 
@@ -22,19 +22,19 @@ class GPIONotifier : public QObject {
     Q_OBJECT
 
    public:
-    static const QRegExp GPIOX_REGEX;
-    static const QString GPIO_DIR;
-    static const QString GPIOX_DIR;
-    static const QString GPIOX_VALUE_PATH;
-    static const QString GPIOX_ACTIVE_LOW_PATH;
-
     GPIONotifier();
+    ~GPIONotifier();
 
-    void enable() { this->watcher.blockSignals(false); }
-    void disable() { this->watcher.blockSignals(true); }
+    void enable();
+    void disable();
 
    private:
-    QFileSystemWatcher watcher;
+    struct Watch {
+        gpiod::line line;
+        QSocketNotifier *notifier;
+    };
+
+    QList<Watch> watches;
 
    signals:
     void triggered(QString gpio);
@@ -77,9 +77,9 @@ class Action : public QObject {
 
    private:
     struct GPIO {
-        QFileSystemWatcher watcher;
-        QFile value;
-        uint8_t active_low;
+        gpiod::line line;
+        QSocketNotifier *notifier;
+        bool requested;
 
         GPIO();
         ~GPIO();
