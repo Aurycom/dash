@@ -5,6 +5,13 @@
 /lib
 /nbproject
 /cmake-build-debug
+/.claude
+/aasdk
+/bluez-5.63
+/h264bitstream
+/openauto
+/pulseaudio
+/qt-gstreamer
 
 # Compiled source #
 ###################
