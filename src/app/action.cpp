@@ -22,7 +22,7 @@ const char *GPIO_CONSUMER = "dash";
 // enabled, so a press shows up as a falling edge.
 const gpiod::line_request GPIO_BUTTON_REQUEST{
     GPIO_CONSUMER,
-    gpiod::line_request::EVENT_FALLING_EDGE,
+    gpiod::line_request::EVENT_BOTH_EDGES,
     gpiod::line_request::FLAG_BIAS_PULL_UP
 };
 
