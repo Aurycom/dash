@@ -3,6 +3,7 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
+  "image": "claude-opendash:latest"
   "remoteUser": "dev",
   
   // Définition explicite du dossier de travail dans le conteneur
@@ -12,14 +13,28 @@
     // 1. Montage explicite de votre workspace local vers le conteneur
     // (Remplacez ${localWorkspaceFolder} par le chemin complet si besoin, 
     // mais la variable VS Code ci-dessous pointe automatiquement vers votre projet ouvert)
-    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
 
     // 2. Persistance de la configuration et des tokens de Claude Code
-    //"source=${localEnv:HOME}/.claude,target=/home/dev/.claude,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.claude,target=/home/dev/.claude,type=bind,consistency=cached",
+    "source=npm-global-claude,target=/home/dev/.npm-global,type=volume",
 
     // 3. Persistance de l'historique bash
     //"source=${localEnv:HOME}/.bash_history_devcontainer,target=/home/dev/.bash_history,type=bind"
+    "source=aasdk,target=/workspace/aasdk,type=volume",
+    "source=bluez-5.63,target=/workspace/bluez-5.63,type=volume",
+    "source=build,target=/workspace/build",
+    "source=h264bitstream,target=/workspace/h264bitstream",
+    "source=lib,target=/workspace/lib",
+    "source=openauto,target=/workspace/openauto",
+    "source=pulseaudio,target=/workspace/pulseaudio",
+    "source=qt-gstreamer,target=/workspace/qt-gstreamer"
   ],
+
+  // Forcer Claude Code à pointer vers le dossier monté en volume
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/dev/.claude"
+  },
 
   "customizations": {
     "vscode": {

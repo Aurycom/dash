@@ -1,6 +1,7 @@
 #pragma once
 
 #include <BluezQt/Adapter>
+#include <BluezQt/Agent>
 #include <BluezQt/Device>
 #include <BluezQt/MediaPlayer>
 #include <BluezQt/MediaPlayerTrack>
@@ -15,6 +16,20 @@
 #include "app/widgets/progress.hpp"
 
 class Arbiter;
+
+// Auto-accepts pairing/authorization requests so phones can pair straight
+// from the app UI, the same way `bluetoothctl`'s own agent does on the CLI.
+class BluetoothAgent : public BluezQt::Agent {
+   public:
+    explicit BluetoothAgent(QObject *parent = nullptr);
+
+    QDBusObjectPath objectPath() const override;
+    Capability capability() const override;
+
+    void requestConfirmation(BluezQt::DevicePtr device, const QString &passkey, const BluezQt::Request<> &request) override;
+    void requestAuthorization(BluezQt::DevicePtr device, const BluezQt::Request<> &request) override;
+    void authorizeService(BluezQt::DevicePtr device, const QString &uuid, const BluezQt::Request<> &request) override;
+};
 
 class Bluetooth : public QObject {
     Q_OBJECT

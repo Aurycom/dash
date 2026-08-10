@@ -1,6 +1,11 @@
 FROM node:22-bookworm-slim
 
-# 1. Installation des outils système nécessaires (build-essential, gdb, git, etc.)
+# Arguments pour l'utilisateur non-root
+ARG USERNAME=dev
+ARG USER_UID=1001
+ARG USER_GID=$USER_UID
+
+# 1. Installation des outils système (on garde uniquement le nécessaire pour C++ et git)
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get install -y --no-install-recommends \
         build-essential \
@@ -46,7 +51,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
         libqt5serialbus5-plugins \
         libqt5serialport5-dev \
         libqt5websockets5-dev \
-		libqt5svg5-dev \
+        libqt5svg5-dev \
         build-essential \
         libtool \
         autoconf \
@@ -55,19 +60,22 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Utilisation de l'utilisateur 'node' par défaut présent dans l'image
-USER node
-WORKDIR /home/node
+# Création propre de l'utilisateur avec son dossier home (-m)
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m -s /bin/bash $USERNAME \
+    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
 
-# 3. Configuration de npm pour installer les paquets globaux dans le dossier personnel de l'utilisateur 'node'
-RUN mkdir -p /home/node/.npm-global \
-    && npm config set prefix '/home/node/.npm-global'
+# Passage à l'utilisateur
+USER $USERNAME
+WORKDIR /home/$USERNAME
 
-# 4. Installation globale de Claude Code
+# Sécurité : s'assurer que le dossier .npm-global lui appartient à 100% avant d'exécuter npm
+RUN mkdir -p /home/$USERNAME/.npm-global \
+    && npm config set prefix '/home/$USERNAME/.npm-global'
+
+# Installation globale
 RUN npm install -g @anthropic-ai/claude-code
 
-# 5. Ajout du dossier bin de npm au PATH
-ENV PATH="/home/node/.npm-global/bin:${PATH}"
-
-# 6. Définition du répertoire de travail final
+ENV PATH="/home/$USERNAME/.npm-global/bin:${PATH}"
 WORKDIR /workspace
