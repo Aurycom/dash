@@ -23,8 +23,40 @@
 
 #include "app/services/bluetooth.hpp"
 
-BluetoothAgent::BluetoothAgent(QObject *parent)
+BluetoothDialog::BluetoothDialog(Arbiter &arbiter)
+    : Dialog(arbiter, true, arbiter.window())
+{
+    this->set_title("Code de sécurité bluetooth");
+
+    this->label = new QLabel();
+    this->label->setProperty("add_hint", true);
+    this->label->setFont(arbiter.forge().font(24, true));
+    this->label->setAlignment(Qt::AlignCenter);
+    this->set_body(this->label);
+
+    QPushButton *ok_button = new QPushButton("ok");
+    connect(ok_button, &QPushButton::clicked, [this]{ this->confirmed_ = true; });
+    this->set_button(ok_button);
+}
+
+void BluetoothDialog::set_passkey(QString device_name, QString passkey)
+{
+    this->label->setText(QString("%1\n%2").arg(device_name, passkey));
+}
+
+void BluetoothDialog::closeEvent(QCloseEvent *event)
+{
+    if (this->confirmed_)
+        emit confirmed();
+    else
+        emit cancelled();
+
+    Dialog::closeEvent(event);
+}
+
+BluetoothAgent::BluetoothAgent(Arbiter &arbiter, QObject *parent)
     : BluezQt::Agent(parent)
+    , arbiter(arbiter)
 {
 }
 
@@ -35,15 +67,22 @@ QDBusObjectPath BluetoothAgent::objectPath() const
 
 BluetoothAgent::Capability BluetoothAgent::capability() const
 {
-    // No screen/keyboard prompt to confirm a passkey on, so pair using the
-    // "just works" model and auto-accept authorization requests below.
-    return BluezQt::Agent::NoInputNoOutput;
+    // There's a touchscreen but no keyboard, so show the passkey and let it
+    // be confirmed/rejected with a tap rather than pairing "just works".
+    return BluezQt::Agent::DisplayYesNo;
 }
 
 void BluetoothAgent::requestConfirmation(BluezQt::DevicePtr device, const QString &passkey, const BluezQt::Request<> &request)
 {
     DASH_LOG(info) << "[Bluetooth] Confirming pairing with " << device->name().toStdString() << " (passkey " << passkey.toStdString() << ")";
-    request.accept();
+
+    auto *dialog = new BluetoothDialog(this->arbiter);
+    dialog->set_passkey(device->name(), passkey);
+
+    connect(dialog, &BluetoothDialog::confirmed, [dialog, request]{ request.accept(); dialog->deleteLater(); });
+    connect(dialog, &BluetoothDialog::cancelled, [dialog, request]{ request.reject(); dialog->deleteLater(); });
+
+    dialog->open();
 }
 
 void BluetoothAgent::requestAuthorization(BluezQt::DevicePtr device, const BluezQt::Request<> &request)
@@ -73,14 +112,14 @@ Bluetooth::Bluetooth(Arbiter &arbiter)
 
     // Run the job with start() so we don't block this thread
     job->start();
-    connect(job, &BluezQt::InitManagerJob::result, [this, manager]{
+    connect(job, &BluezQt::InitManagerJob::result, [this, manager, &arbiter]{
         DASH_LOG(info) << "[Bluetooth] Init complete!";
 
         // Without a registered agent, BlueZ has nothing to ask when a phone
         // pairs from the app UI and the request just times out - pairing
         // only appeared to work from `bluetoothctl` because it registers
         // its own agent for the duration of the CLI session.
-        auto *agent = new BluetoothAgent(manager);
+        auto *agent = new BluetoothAgent(arbiter, manager);
         manager->registerAgent(agent);
         manager->requestDefaultAgent(agent);
 
