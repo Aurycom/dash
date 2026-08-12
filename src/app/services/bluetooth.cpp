@@ -28,11 +28,22 @@ BluetoothDialog::BluetoothDialog(Arbiter &arbiter)
 {
     this->set_title("Code de sécurité bluetooth");
 
+    this->name_label = new QLabel();
+    this->name_label->setFont(arbiter.forge().font(16, true));
+    this->name_label->setAlignment(Qt::AlignCenter);
+
     this->label = new QLabel();
     this->label->setProperty("add_hint", true);
     this->label->setFont(arbiter.forge().font(24, true));
     this->label->setAlignment(Qt::AlignCenter);
-    this->set_body(this->label);
+
+    QWidget *body = new QWidget();
+    QVBoxLayout *body_layout = new QVBoxLayout(body);
+    body_layout->setContentsMargins(0, 0, 0, 0);
+    body_layout->setSpacing(0);
+    body_layout->addWidget(this->name_label);
+    body_layout->addWidget(this->label);
+    this->set_body(body);
 
     QPushButton *ok_button = new QPushButton("ok");
     connect(ok_button, &QPushButton::clicked, [this]{ this->confirmed_ = true; });
@@ -41,7 +52,8 @@ BluetoothDialog::BluetoothDialog(Arbiter &arbiter)
 
 void BluetoothDialog::set_passkey(QString device_name, QString passkey)
 {
-    this->label->setText(QString("%1\n%2").arg(device_name, passkey));
+    this->name_label->setText(device_name);
+    this->label->setText(passkey);
 }
 
 void BluetoothDialog::closeEvent(QCloseEvent *event)

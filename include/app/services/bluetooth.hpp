@@ -33,6 +33,7 @@ class BluetoothDialog : public Dialog {
     void closeEvent(QCloseEvent *event) override;
 
    private:
+    QLabel *name_label;
     QLabel *label;
     bool confirmed_ = false;
 
