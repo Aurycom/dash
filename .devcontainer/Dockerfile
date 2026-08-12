@@ -63,11 +63,15 @@ WORKDIR /home/node
 RUN mkdir -p /home/node/.npm-global \
     && npm config set prefix '/home/node/.npm-global'
 
-# 4. Installation globale de Claude Code
-RUN npm install -g @anthropic-ai/claude-code
-
-# 5. Ajout du dossier bin de npm au PATH
+# 3 bis. Ajout du dossier bin de npm au PATH
 ENV PATH="/home/node/.npm-global/bin:${PATH}"
+
+# 4. Installation globale de Claude Code
+RUN mkdir -p /home/node/.claude \
+    && npm install -g @anthropic-ai/claude-code
+
+# 4 bis. Config du dossier Claude
+ENV CLAUDE_CONFIG_DIR=/home/node/.claude
 
 # 6. Définition du répertoire de travail final
 WORKDIR /workspace
