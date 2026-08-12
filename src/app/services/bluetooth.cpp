@@ -23,6 +23,92 @@
 
 #include "app/services/bluetooth.hpp"
 
+BluetoothDialog::BluetoothDialog(Arbiter &arbiter)
+    : Dialog(arbiter, true, arbiter.window())
+{
+    this->set_title("Code de sécurité bluetooth");
+
+    this->name_label = new QLabel();
+    this->name_label->setFont(arbiter.forge().font(16, true));
+    this->name_label->setAlignment(Qt::AlignCenter);
+
+    this->label = new QLabel();
+    this->label->setProperty("add_hint", true);
+    this->label->setFont(arbiter.forge().font(24, true));
+    this->label->setAlignment(Qt::AlignCenter);
+
+    QWidget *body = new QWidget();
+    QVBoxLayout *body_layout = new QVBoxLayout(body);
+    body_layout->setContentsMargins(0, 0, 0, 0);
+    body_layout->setSpacing(0);
+    body_layout->addWidget(this->name_label);
+    body_layout->addWidget(this->label);
+    this->set_body(body);
+
+    QPushButton *ok_button = new QPushButton("ok");
+    connect(ok_button, &QPushButton::clicked, [this]{ this->confirmed_ = true; });
+    this->set_button(ok_button);
+}
+
+void BluetoothDialog::set_passkey(QString device_name, QString passkey)
+{
+    this->name_label->setText(device_name);
+    this->label->setText(passkey);
+}
+
+void BluetoothDialog::closeEvent(QCloseEvent *event)
+{
+    if (this->confirmed_)
+        emit confirmed();
+    else
+        emit cancelled();
+
+    Dialog::closeEvent(event);
+}
+
+BluetoothAgent::BluetoothAgent(Arbiter &arbiter, QObject *parent)
+    : BluezQt::Agent(parent)
+    , arbiter(arbiter)
+{
+}
+
+QDBusObjectPath BluetoothAgent::objectPath() const
+{
+    return QDBusObjectPath(QStringLiteral("/dash/bluetooth/agent"));
+}
+
+BluetoothAgent::Capability BluetoothAgent::capability() const
+{
+    // There's a touchscreen but no keyboard, so show the passkey and let it
+    // be confirmed/rejected with a tap rather than pairing "just works".
+    return BluezQt::Agent::DisplayYesNo;
+}
+
+void BluetoothAgent::requestConfirmation(BluezQt::DevicePtr device, const QString &passkey, const BluezQt::Request<> &request)
+{
+    DASH_LOG(info) << "[Bluetooth] Confirming pairing with " << device->name().toStdString() << " (passkey " << passkey.toStdString() << ")";
+
+    auto *dialog = new BluetoothDialog(this->arbiter);
+    dialog->set_passkey(device->name(), passkey);
+
+    connect(dialog, &BluetoothDialog::confirmed, [dialog, request]{ request.accept(); dialog->deleteLater(); });
+    connect(dialog, &BluetoothDialog::cancelled, [dialog, request]{ request.reject(); dialog->deleteLater(); });
+
+    dialog->open();
+}
+
+void BluetoothAgent::requestAuthorization(BluezQt::DevicePtr device, const BluezQt::Request<> &request)
+{
+    DASH_LOG(info) << "[Bluetooth] Authorizing pairing with " << device->name().toStdString();
+    request.accept();
+}
+
+void BluetoothAgent::authorizeService(BluezQt::DevicePtr device, const QString &uuid, const BluezQt::Request<> &request)
+{
+    DASH_LOG(info) << "[Bluetooth] Authorizing service " << uuid.toStdString() << " for " << device->name().toStdString();
+    request.accept();
+}
+
 Bluetooth::Bluetooth(Arbiter &arbiter)
     : QObject(qApp)
 {
@@ -38,8 +124,16 @@ Bluetooth::Bluetooth(Arbiter &arbiter)
 
     // Run the job with start() so we don't block this thread
     job->start();
-    connect(job, &BluezQt::InitManagerJob::result, [this, manager]{
+    connect(job, &BluezQt::InitManagerJob::result, [this, manager, &arbiter]{
         DASH_LOG(info) << "[Bluetooth] Init complete!";
+
+        // Without a registered agent, BlueZ has nothing to ask when a phone
+        // pairs from the app UI and the request just times out - pairing
+        // only appeared to work from `bluetoothctl` because it registers
+        // its own agent for the duration of the CLI session.
+        auto *agent = new BluetoothAgent(arbiter, manager);
+        manager->registerAgent(agent);
+        manager->requestDefaultAgent(agent);
 
         this->adapter = manager->usableAdapter();
         if (this->has_adapter()) {
@@ -91,10 +185,45 @@ void Bluetooth::stop_scan()
 
 void Bluetooth::toggle_device(BluezQt::DevicePtr device) const
 {
-    if (device->isConnected())
-        device->disconnectFromDevice()->waitForFinished();
-    else
-        device->connectToDevice()->waitForFinished();
+    // Calls are async and don't block the UI thread: pairing especially can
+    // take several seconds, and blocking here (as with the old
+    // waitForFinished() calls) froze the whole app for that duration.
+    if (device->isConnected()) {
+        BluezQt::PendingCall *call = device->disconnectFromDevice();
+        connect(call, &BluezQt::PendingCall::finished, [device](BluezQt::PendingCall *call){
+            if (call->error() != BluezQt::PendingCall::NoError)
+                DASH_LOG(error) << "[Bluetooth] Failed to disconnect from " << device->name().toStdString() << ": " << call->errorText().toStdString();
+        });
+        return;
+    }
+
+    auto connect_to_device = [device]{
+        BluezQt::PendingCall *call = device->connectToDevice();
+        connect(call, &BluezQt::PendingCall::finished, [device](BluezQt::PendingCall *call){
+            if (call->error() != BluezQt::PendingCall::NoError)
+                DASH_LOG(error) << "[Bluetooth] Failed to connect to " << device->name().toStdString() << ": " << call->errorText().toStdString();
+        });
+    };
+
+    if (device->isPaired()) {
+        connect_to_device();
+        return;
+    }
+
+    // Mirror the `bluetoothctl` flow (pair, then trust, then connect) rather
+    // than relying on connectToDevice() to pair on its own.
+    BluezQt::PendingCall *pair_call = device->pair();
+    connect(pair_call, &BluezQt::PendingCall::finished, [device, connect_to_device](BluezQt::PendingCall *call){
+        if (call->error() != BluezQt::PendingCall::NoError) {
+            DASH_LOG(error) << "[Bluetooth] Failed to pair with " << device->name().toStdString() << ": " << call->errorText().toStdString();
+            return;
+        }
+
+        if (!device->isTrusted())
+            device->setTrusted(true);
+
+        connect_to_device();
+    });
 }
 
 void Bluetooth::update_media_player(BluezQt::DevicePtr device)

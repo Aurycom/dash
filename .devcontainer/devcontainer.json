@@ -1,25 +1,40 @@
 {
   "name": "C++ & Claude Code",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
-  "remoteUser": "dev",
-  
+  //"build": {
+  //  "dockerfile": "Dockerfile"
+  //},
+  "image": "localhost/claude-opendash:latest",
+  //"remoteUser": "node",
+  "updateRemoteUserUID": false,
+
   // Définition explicite du dossier de travail dans le conteneur
   "workspaceFolder": "/workspace",
-  
+
   "mounts": [
     // 1. Montage explicite de votre workspace local vers le conteneur
-    // (Remplacez ${localWorkspaceFolder} par le chemin complet si besoin, 
+    // (Remplacez ${localWorkspaceFolder} par le chemin complet si besoin,
     // mais la variable VS Code ci-dessous pointe automatiquement vers votre projet ouvert)
-    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
 
     // 2. Persistance de la configuration et des tokens de Claude Code
-    //"source=${localEnv:HOME}/.claude,target=/home/dev/.claude,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.claude,target=/home/node/.claude,type=bind,consistency=cached",
+    "source=npm-global-claude,target=/home/node/.npm-global,type=volume",
 
     // 3. Persistance de l'historique bash
-    //"source=${localEnv:HOME}/.bash_history_devcontainer,target=/home/dev/.bash_history,type=bind"
+    "source=aasdk,target=/workspace/aasdk,type=volume",
+    "source=bluez-5.63,target=/workspace/bluez-5.63,type=volume",
+    "source=build,target=/workspace/build,type=volume",
+    "source=h264bitstream,target=/workspace/h264bitstream,type=volume",
+    "source=lib,target=/workspace/lib,type=volume",
+    "source=openauto,target=/workspace/openauto,type=volume",
+    "source=pulseaudio,target=/workspace/pulseaudio,type=volume",
+    "source=qt-gstreamer,target=/workspace/qt-gstreamer,type=volume"
   ],
+
+  // Forcer Claude Code à pointer vers le dossier monté en volume
+  //"containerEnv": {
+  //  "CLAUDE_CONFIG_DIR": "/home/node/.claude"
+  //},
 
   "customizations": {
     "vscode": {

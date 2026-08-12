@@ -1,9 +1,11 @@
 #pragma once
 
 #include <BluezQt/Adapter>
+#include <BluezQt/Agent>
 #include <BluezQt/Device>
 #include <BluezQt/MediaPlayer>
 #include <BluezQt/MediaPlayerTrack>
+#include <QLabel>
 #include <QList>
 #include <QMainWindow>
 #include <QMap>
@@ -12,9 +14,50 @@
 #include <QPushButton>
 #include <QString>
 
+#include "app/widgets/dialog.hpp"
 #include "app/widgets/progress.hpp"
 
 class Arbiter;
+
+// Shows the pairing passkey and lets it be confirmed/cancelled with a tap,
+// since there's a touchscreen but no keyboard to type a PIN on.
+class BluetoothDialog : public Dialog {
+    Q_OBJECT
+
+   public:
+    BluetoothDialog(Arbiter &arbiter);
+
+    void set_passkey(QString device_name, QString passkey);
+
+   protected:
+    void closeEvent(QCloseEvent *event) override;
+
+   private:
+    QLabel *name_label;
+    QLabel *label;
+    bool confirmed_ = false;
+
+   signals:
+    void confirmed();
+    void cancelled();
+};
+
+// Displays the passkey on screen for confirmation instead of auto-accepting,
+// so pairing can't be silently forced from a phone with nothing shown here.
+class BluetoothAgent : public BluezQt::Agent {
+   public:
+    explicit BluetoothAgent(Arbiter &arbiter, QObject *parent = nullptr);
+
+    QDBusObjectPath objectPath() const override;
+    Capability capability() const override;
+
+    void requestConfirmation(BluezQt::DevicePtr device, const QString &passkey, const BluezQt::Request<> &request) override;
+    void requestAuthorization(BluezQt::DevicePtr device, const BluezQt::Request<> &request) override;
+    void authorizeService(BluezQt::DevicePtr device, const QString &uuid, const BluezQt::Request<> &request) override;
+
+   private:
+    Arbiter &arbiter;
+};
 
 class Bluetooth : public QObject {
     Q_OBJECT
