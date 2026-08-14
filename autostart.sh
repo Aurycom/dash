@@ -104,7 +104,18 @@ WantedBy=graphical.target
 add_xinit_autostart () {
   # Install dependencies
   echo "Installing xinit and Xorg dependencies"
-  sudo apt install -y xserver-xorg xinit x11-xserver-utils
+  sudo apt install -y xserver-xorg xinit x11-xserver-utils hsetroot picom
+
+  # Create picom config
+  echo "Creating ~/.config/picom.conf"
+  mkdir -p $HOME/.config
+  cat <<EOT > $HOME/.config/picom.conf
+backend = "xrender";
+vsync = true;
+shadow = false;
+fading = false;
+blur-background = false;
+EOT
 
   # Create .xinitrc
   echo "Creating ~/.xinitrc"
@@ -113,6 +124,10 @@ add_xinit_autostart () {
 xset -dpms
 xset s off
 xset s noblank
+
+hsetroot -solid "#000000"
+
+picom --config $HOME/.config/picom.conf -b
 
 while [ true ]; do
   sh $HOME/run_dash.sh
