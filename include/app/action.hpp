@@ -1,5 +1,8 @@
 #pragma once
 
+#include <filesystem>
+#include <memory>
+
 #include <QCloseEvent>
 #include <QKeyEvent>
 #include <QLabel>
@@ -18,6 +21,13 @@
 
 class Arbiter;
 
+// A named GPIO line ("GPIOx") resolved to a chip + offset, but not yet requested.
+struct GpioLine {
+    std::filesystem::path chip_path;
+    unsigned int offset = 0;
+    QString name;
+};
+
 class GPIONotifier : public QObject {
     Q_OBJECT
 
@@ -30,7 +40,9 @@ class GPIONotifier : public QObject {
 
    private:
     struct Watch {
-        gpiod::line line;
+        // shared_ptr so the request can be captured by value in the notifier's
+        // lambda and still be released exactly once, when the last reference drops.
+        std::shared_ptr<gpiod::line_request> request;
         QSocketNotifier *notifier;
     };
 
@@ -77,9 +89,8 @@ class Action : public QObject {
 
    private:
     struct GPIO {
-        gpiod::line line;
+        std::shared_ptr<gpiod::line_request> request;
         QSocketNotifier *notifier;
-        bool requested;
 
         GPIO();
         ~GPIO();

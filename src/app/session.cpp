@@ -335,7 +335,7 @@ QWidget *Session::Forge::brightness_slider(bool buttons) const
         layout->addWidget(brighten_button);
     }
 
-    layout->insertWidget(1, slider, 4);
+    layout->insertWidget(buttons ? 1 : 0, slider, 4);
 
     return widget;
 }
@@ -369,7 +369,7 @@ QWidget *Session::Forge::volume_slider(bool buttons) const
         layout->addWidget(raise_button);
     }
 
-    layout->insertWidget(1, slider, 4);
+    layout->insertWidget(buttons ? 1 : 0, slider, 4);
 
     return widget;
 }

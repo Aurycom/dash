@@ -23,7 +23,7 @@ Config::Config()
     this->cam_network_url = this->settings.value("Pages/Camera/stream_url", QString()).toString();
     this->cam_local_device = this->settings.value("Pages/Camera/local_device", QString()).toString();
     this->cam_is_network = this->settings.value("Pages/Camera/is_network", false).toBool();
-    this->cam_local_format_override = this->settings.value("Pages/Camera/local_format_override", QVideoFrame::Format_Invalid).value<QVideoFrame::PixelFormat>();
+    this->cam_local_format_override = this->settings.value("Pages/Camera/local_format_override", -1).toInt();
     this->cam_autoconnect = this->settings.value("Pages/Camera/automatically_reconnect", false).toBool();
     this->cam_autoconnect_time_secs = this->settings.value("Pages/Camera/auto_reconnect_time_secs", 6).toInt();
     this->cam_overlay = this->settings.value("Pages/Camera/Overlay/enabled", false).toBool();

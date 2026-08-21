@@ -20,45 +20,70 @@ const char *GPIO_CONSUMER = "dash";
 
 // Buttons are assumed to be wired to ground with the internal pull-up
 // enabled, so a press shows up as a falling edge.
-const gpiod::line_request GPIO_BUTTON_REQUEST{
-    GPIO_CONSUMER,
-    gpiod::line_request::EVENT_BOTH_EDGES,
-    gpiod::line_request::FLAG_BIAS_PULL_UP
-};
+gpiod::line_settings gpio_button_settings()
+{
+    gpiod::line_settings settings;
+    settings.set_direction(gpiod::line::direction::INPUT)
+        .set_edge_detection(gpiod::line::edge::BOTH)
+        .set_bias(gpiod::line::bias::PULL_UP);
+    return settings;
+}
+
+std::shared_ptr<gpiod::line_request> request_gpio_line(const GpioLine &line)
+{
+    gpiod::chip chip(line.chip_path);
+    gpiod::line_request request = chip.prepare_request()
+        .set_consumer(GPIO_CONSUMER)
+        .add_line_settings(line.offset, gpio_button_settings())
+        .do_request();
+    return std::make_shared<gpiod::line_request>(std::move(request));
+}
 
 // "gpioN" keys are matched against the RPi devicetree line names ("GPIOx")
 // first so this keeps working across chips (e.g. the Pi 5's RP1), falling
 // back to offset N on gpiochip0 for boards without named lines.
-bool find_gpio_line(int number, gpiod::line &out)
+bool find_gpio_line(int number, GpioLine &out)
 {
-    for (auto &chip : gpiod::make_chip_iter()) {
-        for (auto &line : gpiod::line_iter(chip)) {
-            if (QString::fromStdString(line.name()).compare(QString("GPIO%1").arg(number), Qt::CaseInsensitive) == 0) {
-                out = line;
-                return true;
+    QString target = QString("GPIO%1").arg(number);
+
+    for (auto &entry : std::filesystem::directory_iterator("/dev")) {
+        if (!gpiod::is_gpiochip_device(entry.path()))
+            continue;
+
+        try {
+            gpiod::chip chip(entry.path());
+            std::size_t num_lines = chip.get_info().num_lines();
+            for (unsigned int offset = 0; offset < num_lines; offset++) {
+                gpiod::line_info info = chip.get_line_info(offset);
+                if (QString::fromStdString(info.name()).compare(target, Qt::CaseInsensitive) == 0) {
+                    out = GpioLine{entry.path(), offset, QString::fromStdString(info.name())};
+                    return true;
+                }
             }
+        } catch (const std::exception &) {
+            continue;
         }
     }
 
     try {
-        gpiod::chip chip("gpiochip0");
-        out = chip.get_line(number);
+        std::filesystem::path chip_path("/dev/gpiochip0");
+        gpiod::chip chip(chip_path);
+        out = GpioLine{chip_path, static_cast<unsigned int>(number), QString()};
         return true;
     } catch (const std::exception &) {
         return false;
     }
 }
 
-QString gpio_key_for_line(const gpiod::line &line)
+QString gpio_key_for_line(const GpioLine &line)
 {
-    QString name = QString::fromStdString(line.name());
-    if (name.startsWith("GPIO", Qt::CaseInsensitive)) {
+    if (line.name.startsWith("GPIO", Qt::CaseInsensitive)) {
         bool ok = false;
-        int number = name.mid(4).toInt(&ok);
+        int number = line.name.mid(4).toInt(&ok);
         if (ok)
             return QString("gpio%1").arg(number);
     }
-    return QString("gpio%1").arg(line.offset());
+    return QString("gpio%1").arg(line.offset);
 }
 
 } // namespace
@@ -78,26 +103,39 @@ void GPIONotifier::enable()
     if (!this->watches.isEmpty())
         return;
 
-    for (auto &chip : gpiod::make_chip_iter()) {
-        for (auto &line : gpiod::line_iter(chip)) {
-            QString name = QString::fromStdString(line.name());
-            if (!name.startsWith("GPIO", Qt::CaseInsensitive) || line.is_used())
-                continue;
+    for (auto &entry : std::filesystem::directory_iterator("/dev")) {
+        if (!gpiod::is_gpiochip_device(entry.path()))
+            continue;
 
-            try {
-                line.request(GPIO_BUTTON_REQUEST);
-            } catch (const std::exception &) {
-                continue;
+        try {
+            gpiod::chip chip(entry.path());
+            std::size_t num_lines = chip.get_info().num_lines();
+            for (unsigned int offset = 0; offset < num_lines; offset++) {
+                gpiod::line_info info = chip.get_line_info(offset);
+                QString name = QString::fromStdString(info.name());
+                if (!name.startsWith("GPIO", Qt::CaseInsensitive) || info.used())
+                    continue;
+
+                GpioLine line{entry.path(), offset, name};
+                std::shared_ptr<gpiod::line_request> request;
+                try {
+                    request = request_gpio_line(line);
+                } catch (const std::exception &) {
+                    continue;
+                }
+
+                auto *notifier = new QSocketNotifier(request->fd(), QSocketNotifier::Read, this);
+                QString key = gpio_key_for_line(line);
+                connect(notifier, &QSocketNotifier::activated, this, [this, request, key](int) {
+                    gpiod::edge_event_buffer buffer;
+                    request->read_edge_events(buffer);
+                    emit triggered(key);
+                });
+
+                this->watches.push_back({request, notifier});
             }
-
-            auto *notifier = new QSocketNotifier(line.event_get_fd(), QSocketNotifier::Read, this);
-            QString key = gpio_key_for_line(line);
-            connect(notifier, &QSocketNotifier::activated, this, [this, line, key](int) mutable {
-                line.event_read();
-                emit triggered(key);
-            });
-
-            this->watches.push_back({line, notifier});
+        } catch (const std::exception &) {
+            continue;
         }
     }
 }
@@ -106,9 +144,8 @@ void GPIONotifier::disable()
 {
     for (auto &watch : this->watches) {
         delete watch.notifier;
-        if (watch.line.is_requested())
-            watch.line.release();
     }
+    // Dropping the requests (last shared_ptr reference) releases the GPIO lines.
     this->watches.clear();
 }
 
@@ -156,9 +193,8 @@ void ActionDialog::closeEvent(QCloseEvent *event)
 }
 
 Action::GPIO::GPIO()
-    : line()
+    : request()
     , notifier(nullptr)
-    , requested(false)
 {
 }
 
@@ -166,8 +202,7 @@ Action::GPIO::~GPIO()
 {
     if (notifier)
         delete notifier;
-    if (requested)
-        line.release();
+    // Dropping the request (if any) releases the GPIO line.
 }
 
 Action::Action(QString name, std::function<void(ActionState)> action, QWidget *parent)
@@ -232,10 +267,7 @@ void Action::set(QString key)
         delete this->gpio.notifier;
         this->gpio.notifier = nullptr;
     }
-    if (this->gpio.requested) {
-        this->gpio.line.release();
-        this->gpio.requested = false;
-    }
+    this->gpio.request.reset();
 
     this->key_ = key;
     if (this->key_.startsWith("gpio")) {
@@ -247,16 +279,16 @@ void Action::set(QString key)
         bool ok = false;
         int number = this->key_.mid(4).toInt(&ok);
 
-        gpiod::line line;
+        GpioLine line;
         if (ok && find_gpio_line(number, line)) {
             try {
-                line.request(GPIO_BUTTON_REQUEST);
-                this->gpio.line = line;
-                this->gpio.requested = true;
+                this->gpio.request = request_gpio_line(line);
 
-                this->gpio.notifier = new QSocketNotifier(line.event_get_fd(), QSocketNotifier::Read, this);
-                connect(this->gpio.notifier, &QSocketNotifier::activated, this, [this](int){
-                    this->gpio.line.event_read();
+                auto request = this->gpio.request;
+                this->gpio.notifier = new QSocketNotifier(request->fd(), QSocketNotifier::Read, this);
+                connect(this->gpio.notifier, &QSocketNotifier::activated, this, [this, request](int){
+                    gpiod::edge_event_buffer buffer;
+                    request->read_edge_events(buffer);
                     this->gpio.notifier->setEnabled(false);
                     this->func_(ActionState::Triggered);
                     QTimer::singleShot(300, this, [this]{

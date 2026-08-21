@@ -1,9 +1,9 @@
-import QtQuick 2.0
-import QtGStreamer 1.0
+import QtQuick
+import org.freedesktop.gstreamer.Qt6GLVideoItem 1.0
 
-VideoItem {
+GstGLQt6VideoItem {
       id: aaVideo
+      objectName: "videoItem"
       width: 300
       height: 300
-      surface: videoSurface
 }

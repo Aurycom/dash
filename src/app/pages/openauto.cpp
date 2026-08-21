@@ -27,7 +27,7 @@ OpenAutoWorker::OpenAutoWorker(std::function<void(bool)> callback, bool night_mo
 
     this->app->waitForDevice(true);
     AAHandler *aa_handler = arbiter.android_auto().handler;
-    service_factory.setAndroidAutoInterface(aa_handler);
+    // service_factory.setAndroidAutoInterface(aa_handler);
     aa_handler->setServiceFactory(&service_factory);
 }
 

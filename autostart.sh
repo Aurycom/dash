@@ -138,6 +138,13 @@ EOT
   echo "Creating ~/run_dash.sh and linking to ~/dash/bin/dash"
   cat <<EOT > $HOME/run_dash.sh
 #!/usr/bin/env sh
+export QSG_RHI_BACKEND=opengl
+export GST_GL_PLATFORM=glx
+export GST_GL_WINDOW=x11
+export GST_GL_API=opengl
+export QT_XCB_GL_INTEGRATION=xcb_glx
+export QSG_RENDER_LOOP=basic
+export GST_DEBUG=qmlglsink:5,glimagesink:5,xvimagesink:5,v4l2:3,glcontext:5,glwindow:5,qml6gl:5,gldisplay:5
 $HOME/dash/bin/dash >> $HOME/dash/bin/dash.log 2>&1
 sleep 1
 EOT

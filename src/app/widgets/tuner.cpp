@@ -66,7 +66,7 @@ void Tuner::paintEvent(QPaintEvent *event)
                 auto pen = painter.pen();
                 pen.setColor(this->color);
                 painter.setPen(pen);
-                painter.drawText(QPointF(x - (fontMetrics.width(num) / 2.0), this->height()), num);
+                painter.drawText(QPointF(x - (fontMetrics.horizontalAdvance(num) / 2.0), this->height()), num);
                 alpha_offset = 12;
             }
         }

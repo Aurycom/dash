@@ -1,3 +1,4 @@
+#include <QAbstractButton>
 #include <QHBoxLayout>
 #include <QLocale>
 #include <QPushButton>
@@ -58,11 +59,11 @@ Dash::Dash(Arbiter &arbiter)
     layout->addLayout(this->rail.layout);
     layout->addLayout(this->body.layout);
 
-    connect(&this->rail.group, QOverload<int>::of(&QButtonGroup::buttonPressed), [this](int id){
-        this->arbiter.set_curr_page(id);
+    connect(&this->rail.group, &QButtonGroup::buttonPressed, [this](QAbstractButton *button){
+        this->arbiter.set_curr_page(this->rail.group.id(button));
         this->rail.timer.start();
     });
-    connect(&this->rail.group, QOverload<int>::of(&QButtonGroup::buttonReleased), [this](int id){
+    connect(&this->rail.group, &QButtonGroup::buttonReleased, [this](QAbstractButton *button){
         if (this->rail.timer.hasExpired(1000))
             this->arbiter.set_fullscreen(true);
     });

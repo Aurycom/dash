@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #repo addresses
-aasdkRepo="https://github.com/OpenDsh/aasdk"
-gstreamerRepo="https://github.com/GStreamer/qt-gstreamer"
-openautoRepo="https://github.com/openDsh/openauto"
+aasdkRepo="https://github.com/Aurycom/aasdk.git"
+gstreamerRepo="https://github.com/Aurycom/qt-gstreamer.git"
+openautoRepo="https://github.com/Aurycom/openauto.git"
 h264bitstreamRepo="https://github.com/aizvorski/h264bitstream"
 pulseaudioRepo="https://gitlab.freedesktop.org/pulseaudio/pulseaudio.git"
 
@@ -144,6 +144,7 @@ installArgs="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} $installArgs"
 
 #Array of dependencies any new dependencies can be added here
 dependencies=(
+
 "alsa-utils"
 "cmake"
 "libboost-all-dev"
@@ -152,36 +153,36 @@ dependencies=(
 "libprotobuf-dev"
 "protobuf-c-compiler"
 "protobuf-compiler"
-"libqt5multimedia5"
-"libqt5multimedia5-plugins"
-"libqt5multimediawidgets5"
-"qtmultimedia5-dev"
-"libqt5bluetooth5"
-"libqt5bluetooth5-bin"
-"qtconnectivity5-dev"
+"qt6-base-dev"
+"qt6-multimedia-dev"
+"libqt6multimedia6"
+"libqt6multimediawidgets6"
+"libqt6bluetooth6"
+"qt6-connectivity-dev"
 "pulseaudio"
 "pulseaudio-module-bluetooth"
 "librtaudio-dev"
-"librtaudio6"
-"libkf5bluezqt-dev"
+"librtaudio7"
+"libkf6bluezqt-dev"
 "libtag1-dev"
-"qml-module-qtquick2"
+"qml6-module-qtquick"
 "libglib2.0-dev"
 "libgstreamer1.0-dev"
 "gstreamer1.0-plugins-base-apps"
+"gstreamer1.0-plugins-good"
 "gstreamer1.0-plugins-bad"
 "gstreamer1.0-libav"
 "gstreamer1.0-alsa"
+"gstreamer1.0-qt6"
 "libgstreamer-plugins-base1.0-dev"
-"qtdeclarative5-dev"
+"qt6-declarative-dev"
 "libgstreamer-plugins-bad1.0-dev"
 "libunwind-dev"
-"qml-module-qtmultimedia"
-"libqt5serialbus5-dev"
-"libqt5serialbus5-plugins"
-"libqt5serialport5-dev"
-"libqt5websockets5-dev"
-"libqt5svg5-dev"
+"qml6-module-qtmultimedia"
+"qt6-serialbus-dev"
+"qt6-serialport-dev"
+"qt6-websockets-dev"
+"qt6-svg-dev"
 "build-essential"
 "libtool"
 "autoconf"
@@ -195,11 +196,6 @@ if [ $deps = false ]
   then
     echo -e skipping dependencies '\n'
   else
-    if [ $isDebian ] && [ $BULLSEYE = false ]; then
-      echo Adding qt5-default to dependencies
-      dependencies[${#dependencies[@]}]="qt5-default"
-    fi
-
     echo installing dependencies
     #loop through dependencies and install
     echo Running apt-get update
@@ -501,7 +497,7 @@ if [ $gstreamer = true ]; then
 
   #run cmake
   echo Beginning cmake
-  cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH) -DCMAKE_INSTALL_INCLUDEDIR=include -DQT_VERSION=5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-std=c++11
+  cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH) -DCMAKE_INSTALL_INCLUDEDIR=include -DQT_VERSION=6 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-std=c++17
 
   if [[ $? -eq 0 ]]; then
     echo -e Make ok'\n'
@@ -556,6 +552,7 @@ else
     echo -e cloned OK'\n'
   else
     cd openauto
+    git checkout develop
     if [[ $? -eq 0 ]]; then
       git pull $openautoRepo
       echo -e Openauto cloned OK'\n'
@@ -580,8 +577,12 @@ else
 
   cd build
 
+  # Patch IAndroidAutoInterface.hpp to remove extra argument in sendButtonPress (Qt6 migration fix)
+  sed -i 's/m_serviceFactory->sendButtonPress(buttonCode, wheelDirection, buttonEventType);/m_serviceFactory->sendButtonPress(buttonCode, wheelDirection);/g' ../include/openauto/Service/IAndroidAutoInterface.hpp
+
   echo Beginning openauto cmake
-  cmake ${installArgs} -DGST_BUILD=true ../
+  #cmake ${installArgs} -DGST_BUILD=true --debug-find-pkg=Qt6Bluetooth ../
+  cmake ${installArgs} -DGST_BUILD=true --debug-find-pkg=Qt6Bluetooth ../
   if [[ $? -eq 0 ]]; then
     echo -e Openauto CMake OK'\n'
   else

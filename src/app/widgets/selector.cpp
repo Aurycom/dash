@@ -20,7 +20,7 @@ Selector::Selector(QList<QString> options, QString current, QFont font, Arbiter 
     this->label->setFont(font);
 
     this->set_state();
-    this->current_idx = std::max(0, this->options.indexOf(current));
+    this->current_idx = std::max(0, static_cast<int>(this->options.indexOf(current)));
 
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -29,7 +29,7 @@ Selector::Selector(QList<QString> options, QString current, QFont font, Arbiter 
 
 void Selector::set_current(QString current)
 {
-    this->current_idx = std::max(0, this->options.indexOf(current));
+    this->current_idx = std::max(0, static_cast<int>(this->options.indexOf(current)));
     this->update_label();
     emit item_changed(this->get_current());
     emit idx_changed(this->current_idx);
@@ -42,8 +42,8 @@ QSize Selector::sizeHint() const
     });
 
     int base = 32 * this->arbiter.layout().scale;
-    int size = (it != this->options.end()) ? it->size() : 0;
-    int width = (base * 2) + std::max(this->label->width(), QFontMetrics(this->label->font()).width(size)) + (12 * 4);
+    QString longest = (it != this->options.end()) ? *it : QString();
+    int width = (base * 2) + std::max(this->label->width(), QFontMetrics(this->label->font()).horizontalAdvance(longest)) + (12 * 4);
     int height = std::max(base, this->label->height()) + (12 * 2);
     return QSize(width, height);
 }

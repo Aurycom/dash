@@ -1,10 +1,12 @@
 #pragma once
 
 #include <QFileInfo>
+#include <QList>
 #include <QMap>
 #include <QMediaPlayer>
 #include <QPluginLoader>
 #include <QString>
+#include <QUrl>
 #include <QtWidgets>
 
 #include "app/config.hpp"
@@ -13,6 +15,32 @@
 #include "app/widgets/tuner.hpp"
 
 class Arbiter;
+
+// Minimal replacement for QMediaPlaylist, removed in Qt6. Only implements
+// the always-looping behavior LocalPlayerTab relies on.
+class MediaPlaylist : public QObject {
+    Q_OBJECT
+
+   public:
+    MediaPlaylist(QMediaPlayer *player, QObject *parent = nullptr);
+
+    bool addMedia(const QUrl &url);
+    void clear();
+
+    int currentIndex() const { return this->current_index; }
+    void setCurrentIndex(int index);
+
+    void next();
+    void previous();
+
+   signals:
+    void currentIndexChanged(int index);
+
+   private:
+    QMediaPlayer *player;
+    QList<QUrl> tracks;
+    int current_index = -1;
+};
 
 class MediaPage : public QTabWidget, public Page {
     Q_OBJECT
@@ -80,5 +108,6 @@ class LocalPlayerTab : public QWidget {
 
     Config *config;
     QMediaPlayer *player;
+    MediaPlaylist *playlist;
     QLabel *path_label;
 };

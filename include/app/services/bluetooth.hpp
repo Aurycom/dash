@@ -84,10 +84,12 @@ class Bluetooth : public QObject {
 
    private:
     void update_media_player(BluezQt::DevicePtr device);
+    void watch_adapter();
 
     BluezQt::AdapterPtr adapter;
     BluezQt::DevicePtr media_player_device;
     QTimer *scan_timer;
+    bool watching_adapter = false;
 
    signals:
     void init();

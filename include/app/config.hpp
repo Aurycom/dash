@@ -7,7 +7,6 @@
 #include <QSettings>
 #include <QString>
 #include <QStringList>
-#include <QVideoFrame>
 #include <QWidget>
 
 /*
@@ -114,8 +113,8 @@ class Config : public QObject {
         this->settings.setValue("Pages/Camera/is_network", this->cam_is_network);
     }
 
-    inline QVideoFrame::PixelFormat get_cam_local_format_override() { return this->cam_local_format_override; }
-    inline void set_cam_local_format_override(QVideoFrame::PixelFormat local_format)
+    inline int get_cam_local_format_override() { return this->cam_local_format_override; }
+    inline void set_cam_local_format_override(int local_format)
     {
         this->cam_local_format_override = local_format;
         this->settings.setValue("Pages/Camera/local_format_override", this->cam_local_format_override);
@@ -192,7 +191,7 @@ class Config : public QObject {
     QString cam_network_url;
     QString cam_local_device;
     bool cam_is_network;
-    QVideoFrame::PixelFormat cam_local_format_override;
+    int cam_local_format_override;
     bool cam_autoconnect;
     int cam_autoconnect_time_secs;
     bool cam_overlay;

@@ -27,7 +27,6 @@ void StepMeter::paintEvent(QPaintEvent *event)
 {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setRenderHint(QPainter::HighQualityAntialiasing);
 
     int spacing = 4 * this->scale;
     int bar_width = (this->width() - (spacing * (this->steps + 1))) / this->steps;

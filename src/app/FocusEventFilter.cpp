@@ -15,14 +15,14 @@ bool FocusEventFilter::eventFilter(QObject *obj, QEvent *event) {
         if(event->type() == QEvent::ChildAdded){
             QChildEvent *ce = static_cast<QChildEvent*>(event);
             if(auto btn = qobject_cast<QPushButton*>(ce->child())){
-                qDebug()<< "ajout bouton détecté";
+                //qDebug()<< "ajout bouton détecté";
                 btn->setAutoDefault(true);
             }
         }else if (event->type() == QEvent::FocusIn) {
-            qDebug()<< "event FocusIn";
+            //qDebug()<< "event FocusIn";
             QFocusEvent *focusEvent = static_cast<QFocusEvent*>(event);
             if (focusEvent->reason() == Qt::TabFocusReason || focusEvent->reason() == Qt::BacktabFocusReason) {
-                qDebug()<< "set focusByTab to true";
+                //qDebug()<< "set focusByTab to true";
                 widget->setProperty("focusByTab", true);
                 widget->style()->polish(widget);
             }
@@ -37,21 +37,21 @@ bool FocusEventFilter::eventFilter(QObject *obj, QEvent *event) {
 
             QString readable = QKeySequence(keyEvent->key()).toString();
             QString rawText = keyEvent->text();
-            qDebug() << "1 - Key code =" << keyEvent->key()
+            /*qDebug() << "1 - Key code =" << keyEvent->key()
              << ", readable =" << readable
-             << ", rawText =" << rawText ;
+             << ", rawText =" << rawText ;*/
         }
     }else if (event->type() == QEvent::KeyPress) {
             QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
 
         QString readable = QKeySequence(keyEvent->key()).toString();
         QString rawText = keyEvent->text();
-        qDebug() << "2 - Key code =" << keyEvent->key()
+        /*qDebug() << "2 - Key code =" << keyEvent->key()
          << ", readable =" << readable
-         << ", rawText =" << rawText ;
-        qDebug() << "Enter pressed on "<<obj<<obj->metaObject()->className();
+         << ", rawText =" << rawText ;*/
+        //qDebug() << "Enter pressed on "<<obj<<obj->metaObject()->className();
         QWidget *focused= QApplication::focusWidget();
-        qDebug() << "Focused widget "<< focused;
+        //qDebug() << "Focused widget "<< focused;
 
         QWidget *w = QApplication::focusWidget();
 if (w && (keyEvent->key()==Qt::Key_Return || keyEvent->key()==Qt::Key_Enter)) {

@@ -20,7 +20,7 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/")
-SET(CMAKE_CXX_STANDARD 14)
+SET(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} -rdynamic)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_INIT} -Wall -pedantic -fPIC")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
@@ -34,8 +34,8 @@ add_definitions(-DBOOST_ALL_DYN_LINK)
 
 find_package(Boost REQUIRED COMPONENTS system log OPTIONAL_COMPONENTS unit_test_framework)
 find_package(libusb-1.0 REQUIRED)
-find_package(Qt5 COMPONENTS Multimedia MultimediaWidgets Bluetooth Qml Quick QuickWidgets SerialBus SerialPort WebSockets DBus Xml Svg Concurrent REQUIRED)
-find_package(KF5BluezQt REQUIRED)
+find_package(Qt6 COMPONENTS Multimedia MultimediaWidgets Bluetooth Qml Quick QuickWidgets SerialBus SerialPort WebSockets DBus Xml Svg REQUIRED)
+find_package(KF6BluezQt REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(rtaudio REQUIRED)
@@ -44,7 +44,7 @@ find_package(aasdk REQUIRED)
 find_package(openauto REQUIRED)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GPIOD REQUIRED libgpiodcxx)
+pkg_check_modules(GPIOD REQUIRED libgpiodcxx>=2.0)
 
 if(RPI_BUILD AND NOT GST_BUILD)
     add_definitions(-DUSE_OMX -DOMX_SKIP64BIT)
@@ -54,7 +54,10 @@ if(RPI_BUILD AND NOT GST_BUILD)
     set(ILCLIENT_LIBRARIES "/opt/vc/src/hello_pi/libs/ilclient/libilclient.a;/opt/vc/lib/libvcos.so;/opt/vc/lib/libvcilcs.a;/opt/vc/lib/libvchiq_arm.so")
 endif(RPI_BUILD AND NOT GST_BUILD)
 if(GST_BUILD)
-    find_package(Qt5GStreamer)
+    message(STATUS "Setting QT_INCLUDE_DIR to bypass broken Qt6GStreamer check")
+    set(QT_INCLUDE_DIR ${Qt6Core_INCLUDE_DIRS})
+#    find_package(Qt6GStreamer REQUIRED)
+    include("/usr/lib/aarch64-linux-gnu/cmake/Qt6GStreamer/Qt6GStreamerConfig.cmake")
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GST REQUIRED
         gstreamer-1.0>=1.4
@@ -80,7 +83,8 @@ endif(GST_BUILD)
 message(INFO "${GST_LIBRARIES}")
 
 link_directories(${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
-    ${GPIOD_LIBRARY_DIRS})
+    ${GPIOD_LIBRARY_DIRS}
+    ${QTGSTREAMER_LIBRARY})
 
 file(GLOB_RECURSE source_files ${sources_directory}/*.cpp ${include_directory}/*.hpp ${resources_directory}/*.qrc)
 
@@ -93,20 +97,21 @@ include(${base_directory}/cmake_modules/gitversion.cmake)
 target_include_directories(dash PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}
     ${GPIOD_INCLUDE_DIRS}
+    ${QTGSTREAMER_INCLUDE_DIR}
     )
 
 target_include_directories(dash SYSTEM PRIVATE
-    ${Qt5Svg_INCLUDE_DIRS}
-    ${Qt5Xml_INCLUDE_DIRS}
-    ${Qt5WebSockets_INCLUDE_DIRS}
-    ${Qt5DBus_INCLUDE_DIRS}
-    ${Qt5SerialBus_INCLUDE_DIRS}
-    ${Qt5SerialPort_INCLUDE_DIRS}
-    ${Qt5Multimedia_INCLUDE_DIRS}
-    ${Qt5MultimediaWidgets_INCLUDE_DIRS}
-    ${Qt5Widgets_INCLUDE_DIRS}
-    ${Qt5Bluetooth_INCLUDE_DIRS}
-    ${Qt5Concurrent_INCLUDE_DIRS}
+    ${Qt6Svg_INCLUDE_DIRS}
+    ${Qt6Xml_INCLUDE_DIRS}
+    ${Qt6WebSockets_INCLUDE_DIRS}
+    ${Qt6DBus_INCLUDE_DIRS}
+    ${Qt6SerialBus_INCLUDE_DIRS}
+    ${Qt6SerialPort_INCLUDE_DIRS}
+    ${Qt6Multimedia_INCLUDE_DIRS}
+    ${Qt6MultimediaWidgets_INCLUDE_DIRS}
+    ${Qt6Widgets_INCLUDE_DIRS}
+    ${Qt6Bluetooth_INCLUDE_DIRS}
+#    ${Qt5Concurrent_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
     ${LIBUSB_1_INCLUDE_DIRS}
     ${PROTOBUF_INCLUDE_DIR}
@@ -128,17 +133,17 @@ target_link_libraries(dash
     aasdk
     openauto
     ${Boost_LIBRARIES}
-    ${Qt5Svg_LIBRARIES}
-    ${Qt5Xml_LIBRARIES}
-    ${Qt5DBus_LIBRARIES}
-    ${Qt5WebSockets_LIBRARIES}
-    ${Qt5SerialBus_LIBRARIES}
-    ${Qt5SerialPort_LIBRARIES}
-    ${Qt5Multimedia_LIBRARIES}
-    ${Qt5MultimediaWidgets_LIBRARIES}
-    ${Qt5Bluetooth_LIBRARIES}
-    ${QT5Concurrent_LIBRARIES}
-    KF5::BluezQt
+    ${Qt6Svg_LIBRARIES}
+    ${Qt6Xml_LIBRARIES}
+    ${Qt6DBus_LIBRARIES}
+    ${Qt6WebSockets_LIBRARIES}
+    ${Qt6SerialBus_LIBRARIES}
+    ${Qt6SerialPort_LIBRARIES}
+    ${Qt6Multimedia_LIBRARIES}
+    ${Qt6MultimediaWidgets_LIBRARIES}
+    ${Qt6Bluetooth_LIBRARIES}
+#    ${QT5Concurrent_LIBRARIES}
+    KF6::BluezQt
     ${LIBUSB_1_LIBRARIES}
     ${PROTOBUF_LIBRARIES}
     ${BCM_HOST_LIBRARIES}
@@ -152,7 +157,7 @@ target_link_libraries(dash
     ${QTGSTREAMER_LIBRARIES}
     ${QTGSTREAMER_UI_LIBRARY}
     ${QTGSTREAMER_UI_LIBRARIES}
-    ${Qt5QuickWidgets_LIBRARIES}
+    ${Qt6QuickWidgets_LIBRARIES}
     ${QTGSTREAMER_QUICK_LIBRARIES}
     ${QTGSTREAMER_QUICK_LIBRARY}
     ${TAGLIB_LIBRARIES}

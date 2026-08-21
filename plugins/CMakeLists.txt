@@ -18,15 +18,15 @@ FOREACH(plugin_type ${plugin_types})
         add_library(${plugin} SHARED ${plugin_src_files})
         set_target_properties(${plugin} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/plugins/${plugin_type})
         target_include_directories(${plugin} SYSTEM PRIVATE
-            ${Qt5Xml_INCLUDE_DIRS}
-            ${Qt5WebSockets_INCLUDE_DIRS}
-            ${Qt5SerialBus_INCLUDE_DIRS}
-            ${Qt5Multimedia_INCLUDE_DIRS}
-            ${Qt5MultimediaWidgets_INCLUDE_DIRS}
-            ${Qt5Widgets_INCLUDE_DIRS}
-            ${Qt5Bluetooth_INCLUDE_DIRS}
-            ${Qt5DBus_INCLUDE_DIRS}
-	    ${Qt5Concurrent_INCLUDE_DIRS}
+            ${Qt6Xml_INCLUDE_DIRS}
+            ${Qt6WebSockets_INCLUDE_DIRS}
+            ${Qt6SerialBus_INCLUDE_DIRS}
+            ${Qt6Multimedia_INCLUDE_DIRS}
+            ${Qt6MultimediaWidgets_INCLUDE_DIRS}
+            ${Qt6Widgets_INCLUDE_DIRS}
+            ${Qt6Bluetooth_INCLUDE_DIRS}
+            ${Qt6DBus_INCLUDE_DIRS}
+#	    ${Qt5Concurrent_INCLUDE_DIRS}
             ${Boost_INCLUDE_DIRS}
             ${LIBUSB_1_INCLUDE_DIRS}
             ${PROTOBUF_INCLUDE_DIR}
@@ -48,16 +48,16 @@ FOREACH(plugin_type ${plugin_types})
             aasdk_proto
             aasdk
             openauto
-            ${Qt5DBus_LIBRARIES}
+            ${Qt6DBus_LIBRARIES}
             ${Boost_LIBRARIES}
-            ${Qt5Xml_LIBRARIES}
-            ${Qt5WebSockets_LIBRARIES}
-            ${Qt5SerialBus_LIBRARIES}
-            ${Qt5Multimedia_LIBRARIES}
-            ${Qt5MultimediaWidgets_LIBRARIES}
-            ${Qt5Bluetooth_LIBRARIES}
-            ${Qt5Concurrent_LIBRARIES}
-            KF5::BluezQt
+            ${Qt6Xml_LIBRARIES}
+            ${Qt6WebSockets_LIBRARIES}
+            ${Qt6SerialBus_LIBRARIES}
+            ${Qt6Multimedia_LIBRARIES}
+            ${Qt6MultimediaWidgets_LIBRARIES}
+            ${Qt6Bluetooth_LIBRARIES}
+#            ${Qt5Concurrent_LIBRARIES}
+            KF6::BluezQt
             ${LIBUSB_1_LIBRARIES}
             ${PROTOBUF_LIBRARIES}
             ${BCM_HOST_LIBRARIES}
@@ -71,7 +71,7 @@ FOREACH(plugin_type ${plugin_types})
             ${QTGSTREAMER_LIBRARIES}
             ${QTGSTREAMER_UI_LIBRARY}
             ${QTGSTREAMER_UI_LIBRARIES}
-            ${Qt5QuickWidgets_LIBRARIES}
+            ${Qt6QuickWidgets_LIBRARIES}
             ${QTGSTREAMER_QUICK_LIBRARIES}
             ${QTGSTREAMER_QUICK_LIBRARY}
             ${TAGLIB_LIBRARIES}

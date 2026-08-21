@@ -14,6 +14,7 @@
 #include <QBluetoothLocalDevice>
 #include <QBluetoothServiceDiscoveryAgent>
 #include <QBluetoothServiceInfo>
+#include <QDBusObjectPath>
 #include <QTimer>
 
 #include "DashLog.hpp"
@@ -122,6 +123,21 @@ Bluetooth::Bluetooth(Arbiter &arbiter)
     BluezQt::Manager *manager = new BluezQt::Manager();
     BluezQt::InitManagerJob *job = manager->init();
 
+    // usableAdapter() only ever reports a *powered* adapter. Unlike Bookworm,
+    // Trixie doesn't auto-power the adapter at boot, so it stays unusable
+    // until we power it on ourselves below - pick that transition up here.
+    connect(manager, &BluezQt::Manager::usableAdapterChanged, this, [this](BluezQt::AdapterPtr adapter){
+        this->adapter = adapter;
+        if (this->has_adapter())
+            this->watch_adapter();
+        else
+            this->watching_adapter = false;
+
+        DASH_LOG(info) << "[Bluetooth] Usable adapter changed, has adapter: " << this->has_adapter();
+
+        emit init();
+    });
+
     // Run the job with start() so we don't block this thread
     job->start();
     connect(job, &BluezQt::InitManagerJob::result, [this, manager, &arbiter]{
@@ -137,28 +153,44 @@ Bluetooth::Bluetooth(Arbiter &arbiter)
 
         this->adapter = manager->usableAdapter();
         if (this->has_adapter()) {
-            for (auto device : this->get_devices()) {
-                if (device->mediaPlayer() != nullptr) {
-                    this->media_player_device = device;
-                    break;
-                }
-            }
-
-            connect(this->adapter.data(), &BluezQt::Adapter::deviceAdded, [this](BluezQt::DevicePtr device){
-                emit device_added(device);
-            });
-            connect(this->adapter.data(), &BluezQt::Adapter::deviceChanged, [this](BluezQt::DevicePtr device) {
-                emit device_changed(device);
-                this->update_media_player(device);
-            });
-            connect(this->adapter.data(), &BluezQt::Adapter::deviceRemoved, [this](BluezQt::DevicePtr device){
-                emit device_removed(device);
-            });
+            this->watch_adapter();
+        }
+        else {
+            // Not powered by BlueZ at boot on this system: power on whatever
+            // adapters exist and let usableAdapterChanged report it once
+            // BlueZ considers it usable.
+            for (auto candidate : manager->adapters())
+                candidate->setPowered(true);
         }
 
         DASH_LOG(info) << "[Bluetooth] Has Adapter: " << this->has_adapter() << ", Has Media Device: " << (this->media_player_device != nullptr);
 
         emit init();
+    });
+}
+
+void Bluetooth::watch_adapter()
+{
+    if (this->watching_adapter)
+        return;
+    this->watching_adapter = true;
+
+    for (auto device : this->get_devices()) {
+        if (device->mediaPlayer() != nullptr) {
+            this->media_player_device = device;
+            break;
+        }
+    }
+
+    connect(this->adapter.data(), &BluezQt::Adapter::deviceAdded, this, [this](BluezQt::DevicePtr device){
+        emit device_added(device);
+    });
+    connect(this->adapter.data(), &BluezQt::Adapter::deviceChanged, this, [this](BluezQt::DevicePtr device) {
+        emit device_changed(device);
+        this->update_media_player(device);
+    });
+    connect(this->adapter.data(), &BluezQt::Adapter::deviceRemoved, this, [this](BluezQt::DevicePtr device){
+        emit device_removed(device);
     });
 }
 

@@ -46,16 +46,16 @@ void elm327::btConnected()
 void elm327::socketChanged(QBluetoothSocket::SocketState state)
 {
     switch(state){
-        case(QBluetoothSocket::UnconnectedState):
+        case(QBluetoothSocket::SocketState::UnconnectedState):
             DASH_LOG(info)<<"[ElM327][Bluetooth] Unconnected";
             break;
-        case(QBluetoothSocket::ConnectingState):
+        case(QBluetoothSocket::SocketState::ConnectingState):
             DASH_LOG(info)<<"[ElM327][Bluetooth] Connecting";
             break;
-        case(QBluetoothSocket::ConnectedState):
+        case(QBluetoothSocket::SocketState::ConnectedState):
             DASH_LOG(info)<<"[ElM327][Bluetooth] Connected";
             break;
-        case(QBluetoothSocket::ServiceLookupState):
+        case(QBluetoothSocket::SocketState::ServiceLookupState):
             DASH_LOG(info)<<"[ElM327][Bluetooth] Looking up Services";
             break;
         default:

@@ -6,7 +6,6 @@
 #include <QDirIterator>
 #include <QListWidget>
 #include <QListWidgetItem>
-#include <QMediaPlaylist>
 
 #include "app/window.hpp"
 #include "app/pages/media.hpp"
@@ -287,17 +286,63 @@ QWidget *RadioPlayerTab::controls_widget()
     return widget;
 }
 
+MediaPlaylist::MediaPlaylist(QMediaPlayer *player, QObject *parent)
+    : QObject(parent)
+    , player(player)
+{
+}
+
+bool MediaPlaylist::addMedia(const QUrl &url)
+{
+    this->tracks.push_back(url);
+    return true;
+}
+
+void MediaPlaylist::clear()
+{
+    this->tracks.clear();
+    if (this->current_index != -1) {
+        this->current_index = -1;
+        emit currentIndexChanged(-1);
+    }
+}
+
+void MediaPlaylist::setCurrentIndex(int index)
+{
+    if (index < 0 || index >= this->tracks.size())
+        return;
+
+    this->current_index = index;
+    this->player->setSource(this->tracks[index]);
+    emit currentIndexChanged(index);
+}
+
+void MediaPlaylist::next()
+{
+    if (this->tracks.isEmpty())
+        return;
+
+    int index = (this->current_index < 0) ? 0 : (this->current_index + 1) % this->tracks.size();
+    this->setCurrentIndex(index);
+}
+
+void MediaPlaylist::previous()
+{
+    if (this->tracks.isEmpty())
+        return;
+
+    int index = (this->current_index <= 0) ? this->tracks.size() - 1 : this->current_index - 1;
+    this->setCurrentIndex(index);
+}
+
 LocalPlayerTab::LocalPlayerTab(Arbiter &arbiter, QWidget *parent)
     : QWidget(parent)
     , arbiter(arbiter)
 {
     this->config = Config::get_instance();
 
-    QMediaPlaylist *playlist = new QMediaPlaylist(this);
-    playlist->setPlaybackMode(QMediaPlaylist::Loop);
-
     this->player = new QMediaPlayer(this);
-    this->player->setPlaylist(playlist);
+    this->playlist = new MediaPlaylist(this->player, this);
 
     this->path_label = new QLabel(this->config->get_media_home(), this);
 
@@ -334,11 +379,11 @@ QWidget *LocalPlayerTab::playlist_widget()
     QListWidget *tracks = new QListWidget(widget);
     Session::Forge::to_touch_scroller(tracks);
     this->populate_tracks(root_path, tracks);
-    connect(tracks, &QListWidget::itemClicked, [tracks, player = this->player](QListWidgetItem *item) {
-        player->playlist()->setCurrentIndex(tracks->row(item));
-        player->play();
+    connect(tracks, &QListWidget::itemClicked, [this, tracks](QListWidgetItem *item) {
+        this->playlist->setCurrentIndex(tracks->row(item));
+        this->player->play();
     });
-    connect(this->player->playlist(), &QMediaPlaylist::currentIndexChanged, [tracks](int idx) {
+    connect(this->playlist, &MediaPlaylist::currentIndexChanged, [tracks](int idx) {
         if (idx < 0) return;
         tracks->setCurrentRow(idx);
     });
@@ -346,7 +391,7 @@ QWidget *LocalPlayerTab::playlist_widget()
         if (!item->isSelected()) return;
 
         tracks->clear();
-        this->player->playlist()->clear();
+        this->playlist->clear();
         QString current_path(item->data(Qt::UserRole).toString());
         this->path_label->setText(current_path);
         this->populate_tracks(current_path, tracks);
@@ -399,10 +444,9 @@ QWidget *LocalPlayerTab::controls_widget()
     QPushButton *previous_button = new QPushButton(widget);
     previous_button->setFlat(true);
     this->arbiter.forge().iconize("skip_previous", previous_button, 56);
-    connect(previous_button, &QPushButton::clicked, [player = this->player]() {
-        if (player->playlist()->currentIndex() < 0) player->playlist()->setCurrentIndex(0);
-        player->playlist()->previous();
-        player->play();
+    connect(previous_button, &QPushButton::clicked, [this]() {
+        this->playlist->previous();
+        this->player->play();
     });
     layout->addWidget(previous_button);
 
@@ -418,16 +462,16 @@ QWidget *LocalPlayerTab::controls_widget()
         else
             player->pause();
     });
-    connect(this->player, &QMediaPlayer::stateChanged,
-            [play_button](QMediaPlayer::State state) { play_button->setChecked(state == QMediaPlayer::PlayingState); });
+    connect(this->player, &QMediaPlayer::playbackStateChanged,
+            [play_button](QMediaPlayer::PlaybackState state) { play_button->setChecked(state == QMediaPlayer::PlayingState); });
     layout->addWidget(play_button);
 
     QPushButton *forward_button = new QPushButton(widget);
     forward_button->setFlat(true);
     this->arbiter.forge().iconize("skip_next", forward_button, 56);
-    connect(forward_button, &QPushButton::clicked, [player = this->player]() {
-        player->playlist()->next();
-        player->play();
+    connect(forward_button, &QPushButton::clicked, [this]() {
+        this->playlist->next();
+        this->player->play();
     });
     layout->addWidget(forward_button);
 
@@ -467,7 +511,7 @@ void LocalPlayerTab::populate_tracks(QString path, QListWidget *tracks_widget)
 {
     QStringList tracks = QDir(path).entryList(QStringList() << "*.mp3", QDir::Files | QDir::Readable);
     for (QString track : tracks) {
-        if (this->player->playlist()->addMedia(QMediaContent(QUrl::fromLocalFile(path + '/' + track)))) {
+        if (this->playlist->addMedia(QUrl::fromLocalFile(path + '/' + track))) {
             TagLib::FileRef f(std::string(path.toStdString() + "/" + track.toStdString()).c_str());
             if (!f.isNull() && f.tag()) {
                 TagLib::Tag *tag = f.tag();
