@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:22-trixie-slim
 
 # 1. Installation des outils système nécessaires (build-essential, gdb, git, etc.)
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
@@ -17,36 +17,37 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
         libprotobuf-dev \
         protobuf-c-compiler \
         protobuf-compiler \
-        libqt5multimedia5 \
-        libqt5multimedia5-plugins \
-        libqt5multimediawidgets5 \
-        qtmultimedia5-dev \
-        libqt5bluetooth5 \
-        libqt5bluetooth5-bin \
-        qtconnectivity5-dev \
+        qt6-base-dev \
+        qt6-multimedia-dev \
+        libqt6multimedia6 \
+        libqt6multimediawidgets6 \
+        libqt6bluetooth6 \
+        qt6-connectivity-dev \
         pulseaudio \
         pulseaudio-module-bluetooth \
         librtaudio-dev \
-        librtaudio6 \
-        libkf5bluezqt-dev \
+        librtaudio7 \
+        libkf6bluezqt-dev \
         libtag1-dev \
-        qml-module-qtquick2 \
+        qml6-module-qtquick \
         libglib2.0-dev \
         libgstreamer1.0-dev \
+        gstreamer1.0-plugins-base \
         gstreamer1.0-plugins-base-apps \
+        gstreamer1.0-plugins-good \
         gstreamer1.0-plugins-bad \
         gstreamer1.0-libav \
         gstreamer1.0-alsa \
+        gstreamer1.0-qt6 \
         libgstreamer-plugins-base1.0-dev \
-        qtdeclarative5-dev \
+        qt6-declarative-dev \
         libgstreamer-plugins-bad1.0-dev \
         libunwind-dev \
-        qml-module-qtmultimedia \
-        libqt5serialbus5-dev \
-        libqt5serialbus5-plugins \
-        libqt5serialport5-dev \
-        libqt5websockets5-dev \
-		libqt5svg5-dev \
+        qml6-module-qtmultimedia \
+        qt6-serialbus-dev \
+        qt6-serialport-dev \
+        qt6-websockets-dev \
+        qt6-svg-dev \
         build-essential \
         libtool \
         autoconf \
@@ -54,6 +55,9 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
         libgpiod-dev \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Création du répertoire et attribution des droits à l'utilisateur 'node'
+RUN mkdir -p /workspaces/dash && chown -R node:node /workspaces
 
 # 2. Utilisation de l'utilisateur 'node' par défaut présent dans l'image
 USER node
@@ -73,5 +77,4 @@ RUN mkdir -p /home/node/.claude \
 # 4 bis. Config du dossier Claude
 ENV CLAUDE_CONFIG_DIR=/home/node/.claude
 
-# 6. Définition du répertoire de travail final
-WORKDIR /workspace
+WORKDIR /workspaces/dash

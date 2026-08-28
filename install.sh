@@ -168,6 +168,7 @@ dependencies=(
 "qml6-module-qtquick"
 "libglib2.0-dev"
 "libgstreamer1.0-dev"
+"gstreamer1.0-plugins-base"
 "gstreamer1.0-plugins-base-apps"
 "gstreamer1.0-plugins-good"
 "gstreamer1.0-plugins-bad"
@@ -302,7 +303,7 @@ else
   cd $script_path
 
   #clone aasdk
-  git clone $aasdkRepo
+  git clone -b feature/migration-qt6 $aasdkRepo
   if [[ $? -eq 0 ]]; then
     echo -e Aasdk Cloned ok '\n'
   else
@@ -451,7 +452,7 @@ if [ $gstreamer = true ]; then
 
   #clone gstreamer
   echo Cloning Gstreamer
-  git clone $gstreamerRepo
+  git clone -b feature/migration-qt6 $gstreamerRepo
   if [[ $? -eq 0 ]]; then
     echo -e Gstreamer cloned OK
   else
@@ -547,7 +548,7 @@ else
 
   #clone openauto
   echo -e cloning openauto'\n'
-  git clone $openautoRepo
+  git clone -b feature/migration-qt6 $openautoRepo
   if [[ $? -eq 0 ]]; then
     echo -e cloned OK'\n'
   else
