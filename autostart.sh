@@ -11,6 +11,7 @@ display_help() {
     echo "   -adi, --adddesktopicon           Add desktop icon"
     echo "   -asd, --autostartdaemon          Add autostart daemon"
     echo "   -axi, --addxinit                 Add xinit autostart"
+    echo "   -awi, --addwaylandinit           Add wayland (weston) autostart"
     echo "   -h, --help                       Show help of script"
     echo
     echo "Example: Add an desktop icon"
@@ -21,6 +22,9 @@ display_help() {
     echo
     echo "Example: Add autostart xinit script"
     echo "   helpers.sh -axi"
+    echo
+    echo "Example: Add autostart wayland (weston) script"
+    echo "   helpers.sh -awi"
     echo
     exit 1
 }
@@ -161,6 +165,80 @@ EOT
 
 }
 
+add_wayland_autostart () {
+  # Install dependencies
+  echo "Installing weston and Wayland/Qt6 dependencies"
+  sudo apt install -y weston qt6-wayland libgl1-mesa-dri mesa-utils
+
+  # Create weston config
+  echo "Creating ~/.config/weston.ini"
+  mkdir -p $HOME/.config
+  cat <<EOT > $HOME/.config/weston.ini
+[core]
+xwayland=false
+
+[shell]
+background-color=0xff000000
+locking=false
+panel-position=none
+EOT
+
+  # Create weston launcher (equivalent of .xinitrc)
+  echo "Creating ~/run_weston.sh"
+  cat <<EOT > $HOME/run_weston.sh
+#!/usr/bin/env sh
+export XDG_RUNTIME_DIR=\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}
+mkdir -p "\$XDG_RUNTIME_DIR"
+chmod 0700 "\$XDG_RUNTIME_DIR"
+
+weston --config=$HOME/.config/weston.ini --socket=wayland-dash --idle-time=0 > $HOME/weston.log 2>&1 &
+WESTON_PID=\$!
+
+# Wait for the Wayland socket to be created before starting clients
+# (a fixed socket name is used so this doesn't collide with, or get
+# starved by, any other Wayland compositor already holding wayland-0,
+# e.g. Raspberry Pi Connect's labwc/wayvnc session)
+while [ ! -e "\$XDG_RUNTIME_DIR/wayland-dash" ]; do
+  sleep 0.2
+done
+
+while [ true ]; do
+  sh $HOME/run_dash_wayland.sh
+done
+
+kill \$WESTON_PID 2>/dev/null
+EOT
+
+  # Create runner
+  echo "Creating ~/run_dash_wayland.sh and linking to ~/dash/bin/dash"
+  cat <<EOT > $HOME/run_dash_wayland.sh
+#!/usr/bin/env sh
+export XDG_RUNTIME_DIR=\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}
+export WAYLAND_DISPLAY=wayland-dash
+export QT_QPA_PLATFORM=wayland
+export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+export QSG_RHI_BACKEND=opengl
+export QSG_RENDER_LOOP=basic
+export GST_GL_PLATFORM=egl
+export GST_GL_WINDOW=wayland
+export GST_GL_API=opengl
+export GST_DEBUG=qmlglsink:5,glimagesink:5,xvimagesink:5,v4l2:3,glcontext:5,glwindow:5,qml6gl:5,gldisplay:5
+$HOME/dash/bin/dash >> $HOME/dash/bin/dash.log 2>&1
+sleep 1
+EOT
+
+  # Append to .bashrc
+  echo "Appending weston autostart to ~/.bashrc"
+  cat <<EOT >> $HOME/.bashrc
+
+### wayland (weston)
+if [ "\$(tty)" = "/dev/tty1" ]; then
+  sh $HOME/run_weston.sh
+fi
+EOT
+
+}
+
 # Main Menu
 while :
 do
@@ -178,6 +256,12 @@ do
         -axi | --addxinit)
             if [ $# -ne 0 ]; then
               add_xinit_autostart
+              exit 0
+            fi
+          ;;
+        -awi | --addwaylandinit)
+            if [ $# -ne 0 ]; then
+              add_wayland_autostart
               exit 0
             fi
           ;;

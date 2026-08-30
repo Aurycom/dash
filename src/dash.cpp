@@ -1,5 +1,8 @@
 #include <QApplication>
+#include <QElapsedTimer>
+#include <QPainter>
 #include <QStringList>
+#include <QThread>
 #include <QWindow>
 
 #include "app/window.hpp"
@@ -37,12 +40,39 @@ int main(int argc, char *argv[])
         }
     }
 
-    QPixmap pixmap(QPixmap(":/splash.png").scaledToHeight(size.height() / 2));
+    // Wayland gives clients no control over their window's position (only
+    // X11 does), so centering the splash on screen via QSplashScreen::move()
+    // silently does nothing there. Bake the centered logo into a
+    // screen-sized opaque pixmap instead, so centering comes from the
+    // drawing itself rather than window placement - this also removes the
+    // old transparency mask, whose transparent (unpainted) majority let
+    // weston's black shell background show through as a flash before the
+    // logo area was painted.
+    QPixmap logo(QPixmap(":/splash.png").scaledToHeight(size.height() / 2));
+    QPixmap pixmap(size);
+    pixmap.fill(Qt::black);
+    QPainter painter(&pixmap);
+    painter.drawPixmap((size.width() - logo.width()) / 2, (size.height() - logo.height()) / 2, logo);
+    painter.end();
+
     QSplashScreen splash(pixmap);
-    splash.setMask(pixmap.mask());
-    splash.move(pos.x() + ((size.width() / 2) - (splash.width() / 2)), pos.y() + ((size.height() / 2) - (splash.height() / 2)));
+    splash.move(pos);
     splash.show();
-    dash.processEvents();
+    // A single processEvents() isn't enough on Wayland: the first frame
+    // needs a full create-surface/attach/commit/configure round trip with
+    // the compositor before it's actually mapped, and MainWindow's
+    // constructor below does synchronous work (GStreamer/GL pipeline setup)
+    // without yielding back to the event loop, so the compositor may never
+    // get a chance to show this splash otherwise. Pump events until the
+    // splash window is actually exposed, bounded so a slow/absent
+    // compositor can't hang startup.
+    QElapsedTimer splashTimer;
+    splashTimer.start();
+    while ((!splash.windowHandle() || !splash.windowHandle()->isExposed()) &&
+           splashTimer.elapsed() < 500) {
+        dash.processEvents();
+        QThread::msleep(10);
+    }
 
     MainWindow window(QRect(pos, size));
     window.setWindowIcon(QIcon(":/logo.png"));
