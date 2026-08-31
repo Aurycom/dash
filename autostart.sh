@@ -178,9 +178,14 @@ add_wayland_autostart () {
 xwayland=false
 
 [shell]
-background-color=0xff000000
 locking=false
 panel-position=none
+# background-color is intentionally left unset: weston's DRM backend can
+# crash (assertion \`fb' failed in drm_output_find_plane_for_view) when it
+# tries to promote a solid-color background surface to a hardware overlay
+# plane without a real framebuffer. Use background-image instead if you
+# need a non-default background, e.g.:
+#background-image=$HOME/.config/wallpaper.png
 EOT
 
   # Create weston launcher (equivalent of .xinitrc)
@@ -191,18 +196,34 @@ export XDG_RUNTIME_DIR=\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}
 mkdir -p "\$XDG_RUNTIME_DIR"
 chmod 0700 "\$XDG_RUNTIME_DIR"
 
+# Work around a libweston DRM-backend crash (assertion \`fb' failed in
+# drm_output_find_plane_for_view) that can be triggered when a view
+# without a real framebuffer (e.g. a solid-color background) gets
+# considered for direct scanout on a hardware overlay plane. Forcing
+# legacy (non-atomic) KMS avoids that code path.
+export WESTON_DISABLE_ATOMIC=1
+
 weston --config=$HOME/.config/weston.ini --socket=wayland-dash --idle-time=0 > $HOME/weston.log 2>&1 &
 WESTON_PID=\$!
 
 # Wait for the Wayland socket to be created before starting clients
 # (a fixed socket name is used so this doesn't collide with, or get
 # starved by, any other Wayland compositor already holding wayland-0,
-# e.g. Raspberry Pi Connect's labwc/wayvnc session)
+# e.g. Raspberry Pi Connect's labwc/wayvnc session). Also bail out if
+# weston dies before ever creating the socket, so we don't wait forever
+# on a compositor that's already gone.
 while [ ! -e "\$XDG_RUNTIME_DIR/wayland-dash" ]; do
+  if ! kill -0 "\$WESTON_PID" 2>/dev/null; then
+    echo "weston exited before creating its socket, see $HOME/weston.log" >&2
+    exit 1
+  fi
   sleep 0.2
 done
 
-while [ true ]; do
+# Keep restarting dash as long as weston is alive. If weston crashes
+# (e.g. the DRM backend fault above), stop instead of restarting dash
+# against a stale, dead socket.
+while kill -0 "\$WESTON_PID" 2>/dev/null; do
   sh $HOME/run_dash_wayland.sh
 done
 
