@@ -10,14 +10,28 @@
 #include "app/widgets/dialog.hpp"
 
 Dialog::Dialog(Arbiter &arbiter, bool fullscreen, QWidget *parent)
-    : QDialog(parent, Qt::FramelessWindowHint)
+    : QWidget(arbiter.window())
     , arbiter(arbiter)
 {
     this->setAttribute(Qt::WA_TranslucentBackground, true);
+    // A child widget that's never been explicitly shown/hidden isn't
+    // exempt from its parent's own show() cascading down to it - since
+    // it's added directly under the main window rather than into a layout
+    // that only gets populated once needed, it would otherwise pop up as
+    // soon as MainWindow::show() runs, well before any open() call.
+    this->hide();
 
+    this->anchor = parent;
     this->fullscreen = fullscreen;
-    if (this->fullscreen)
-        this->setModal(true);
+    this->backdrop = nullptr;
+    if (this->fullscreen) {
+        // Parented alongside this dialog (not as its child) so raising the
+        // two of them independently keeps the backdrop behind the dialog's
+        // own content while still being above the rest of the window.
+        this->backdrop = new QWidget(this->arbiter.window());
+        this->backdrop->setAttribute(Qt::WA_TranslucentBackground, true);
+        this->backdrop->hide();
+    }
 
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -33,9 +47,22 @@ Dialog::Dialog(Arbiter &arbiter, bool fullscreen, QWidget *parent)
 
 void Dialog::open(int timeout)
 {
+    // This widget isn't managed by a parent layout (it's a manually
+    // positioned overlay), so its size has to be computed explicitly rather
+    // than relying on the auto-resize-to-sizeHint a top-level QDialog would
+    // otherwise get for free on show().
+    this->adjustSize();
+
+    if (this->backdrop) {
+        this->backdrop->setGeometry(this->arbiter.window()->rect());
+        this->backdrop->raise();
+        this->backdrop->show();
+    }
+
     this->show();
     this->raise();
-    this->activateWindow();
+    this->setFocus();
+
     if (timeout > 0)
         this->timer->start(timeout);
 }
@@ -100,54 +127,63 @@ QWidget *Dialog::content_widget()
 
 void Dialog::set_position()
 {
-    if (QWidget *parent = this->parentWidget()) {
-        QPoint point;
-        if (this->fullscreen) {
-            point = parent->geometry().center() - this->rect().center();
+    QWidget *window = this->arbiter.window();
+    if (!this->anchor || !window)
+        return;
+
+    // This dialog's Qt parent is always the main window (see constructor),
+    // so this is the coordinate space move() below actually needs.
+    QPoint anchor_center = window->mapFromGlobal(this->anchor->mapToGlobal(this->anchor->rect().center()));
+
+    QPoint point;
+    if (this->fullscreen) {
+        point = anchor_center - this->rect().center();
+    }
+    else {
+        QPoint window_center = window->rect().center();
+
+        int offset = std::ceil(4 * this->arbiter.layout().scale);
+
+        QPoint pivot;
+        if (anchor_center.y() > window_center.y()) {
+            pivot = (anchor_center.x() > window_center.x()) ? this->rect().bottomRight() : this->rect().bottomLeft();
+            pivot.ry() += (this->anchor->height() / 2) + offset;
         }
         else {
-            QWidget *window = parent->window();
-            QPoint window_center = window->mapToGlobal(window->rect().center());
-            QPoint parent_center = parent->mapToGlobal(parent->rect().center());
-
-            int offset = std::ceil(4 * this->arbiter.layout().scale);
-
-            QPoint pivot;
-            if (parent_center.y() > window_center.y()) {
-                pivot = (parent_center.x() > window_center.x()) ? this->rect().bottomRight() : this->rect().bottomLeft();
-                pivot.ry() += (parent->height() / 2) + offset;
-            }
-            else {
-                pivot = (parent_center.x() > window_center.x()) ? this->rect().topRight() : this->rect().topLeft();
-                pivot.ry() -= (parent->height() / 2) + offset;
-            }
-            if (parent_center.x() > window_center.x())
-                pivot.rx() -= this->width() / 2;
-            else
-                pivot.rx() += this->width() / 2;
-            point = this->mapFromGlobal(parent_center) - pivot;
+            pivot = (anchor_center.x() > window_center.x()) ? this->rect().topRight() : this->rect().topLeft();
+            pivot.ry() -= (this->anchor->height() / 2) + offset;
         }
-        this->move(point);
+        if (anchor_center.x() > window_center.x())
+            pivot.rx() -= this->width() / 2;
+        else
+            pivot.rx() += this->width() / 2;
+        point = anchor_center - pivot;
     }
+    this->move(point);
 }
 
 void Dialog::keyPressEvent(QKeyEvent *event)
 {
-    if (event->key() != Qt::Key_Escape || this->fullscreen)
-        QDialog::keyPressEvent(event);
+    // Popovers (non-fullscreen) dismiss via their timeout/outside click
+    // instead, not Escape.
+    if (event->key() == Qt::Key_Escape) {
+        if (this->fullscreen)
+            this->close();
+    }
+    else {
+        QWidget::keyPressEvent(event);
+    }
 }
 
 void Dialog::showEvent(QShowEvent *event)
 {
-    // set to null position
-    this->move(QPoint());
     QWidget::showEvent(event);
 
     if (this->fullscreen) {
-        if (QWidget *parent = this->parentWidget()) {
+        if (QWidget *window = this->arbiter.window()) {
             int margin = std::ceil(48 * this->arbiter.layout().scale) * 2;
-            this->setFixedWidth(std::min(this->width(), parent->width() - margin));
-            this->setFixedHeight(std::min(this->height(), parent->height() - margin));
+            this->setFixedWidth(std::min(this->width(), window->width() - margin));
+            this->setFixedHeight(std::min(this->height(), window->height() - margin));
         }
     }
 
@@ -156,6 +192,9 @@ void Dialog::showEvent(QShowEvent *event)
 
 void Dialog::closeEvent(QCloseEvent *)
 {
+    if (this->backdrop)
+        this->backdrop->hide();
+
     // On Raspberry Pi's, sometimes LXPanel will grab focus after a dialog closes
     // Focus should be returned to main dash window instead, so that shortcuts work
     // and that dash remains fullscreen
@@ -181,15 +220,12 @@ SnackBar::SnackBar(Arbiter &arbiter)
 
 void SnackBar::resizeEvent(QResizeEvent* event)
 {
-    // its possible the ref didnt exist when the parent was originally set
-    if (!this->parentWidget()) {
-        auto flags = this->windowFlags();
-        this->setParent(this->get_ref());
-        this->setWindowFlags(flags);
-    }
+    // its possible the ref didnt exist when the anchor was originally set
+    if (!this->anchor)
+        this->anchor = this->get_ref();
 
-    if (QWidget *parent = this->parentWidget())
-        this->setFixedWidth(parent->width() * (2 / 3.0));
+    if (this->anchor)
+        this->setFixedWidth(this->anchor->width() * (2 / 3.0));
 
     Dialog::resizeEvent(event);
 }

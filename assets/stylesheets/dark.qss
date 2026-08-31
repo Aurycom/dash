@@ -284,8 +284,8 @@ QMainWindow#DarkMode > QFrame {
     qproperty-warning_color: #FF7043;
 }
 
-#DarkMode QDialog,
-#DarkMode QDialog > QFrame {
+#DarkMode Dialog,
+#DarkMode Dialog > QFrame {
     background-color: rgb(56, 56, 56);
     border-radius: 8px;
     border: 2px solid rgb(66, 66, 66);
